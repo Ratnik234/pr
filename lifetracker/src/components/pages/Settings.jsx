@@ -1,4 +1,6 @@
-import { Moon, Sun, Monitor, Download, Upload, Trash2, Info, ChevronRight, Palette, Database, ShieldAlert, Heart } from 'lucide-react'
+import { useRef, useState, useEffect } from 'react'
+import { Moon, Sun, Monitor, Download, Upload, Trash2, Info, ChevronRight, Palette, Database, ShieldAlert, Heart, Activity } from 'lucide-react'
+import { exportData, importData, clearData, getSettings, updateSettings } from '../../utils/storage'
 
 // Helper for classes
 function clsx(...args) { return args.filter(Boolean).join(' ') }
@@ -55,7 +57,104 @@ function SettingsItem({ icon: Icon, title, description, rightElement, onClick, i
   )
 }
 
+// ─── Status Toast ─────────────────────────────────────────────────────────────
+function StatusToast({ message, type }) {
+  if (!message) return null
+  const colors = {
+    ok:  { bg: 'rgba(16,185,129,0.12)',  text: '#34d399', border: 'rgba(16,185,129,0.2)'  },
+    err: { bg: 'rgba(239,68,68,0.12)',   text: '#f87171', border: 'rgba(239,68,68,0.2)'   },
+  }
+  const c = colors[type] || colors.ok
+  return (
+    <div
+      className="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 px-5 py-3 rounded-xl text-[13px] font-medium shadow-lg anim-up"
+      style={{ background: c.bg, color: c.text, border: `1px solid ${c.border}`, backdropFilter: 'blur(12px)' }}
+    >
+      {message}
+    </div>
+  )
+}
+
 export default function SettingsPage() {
+  const importRef = useRef(null)
+  const [status, setStatus] = useState({ message: '', type: 'ok' })
+  const [theme, setTheme] = useState('dark')
+  
+  const [goals, setGoals] = useState({
+    calories: 2200,
+    protein: 120,
+    fat: 70,
+    carbs: 250
+  })
+
+  useEffect(() => {
+    const s = getSettings()
+    if (s) {
+      if (s.theme) setTheme(s.theme)
+      if (s.goals) setGoals(s.goals)
+    }
+  }, [])
+
+  function showStatus(message, type = 'ok') {
+    setStatus({ message, type })
+    setTimeout(() => setStatus({ message: '', type: 'ok' }), 4000)
+  }
+
+  // ─── Handlers ──────────────────────────────────────────────────────────────
+  
+  function handleThemeChange(newTheme) {
+    setTheme(newTheme)
+    updateSettings({ theme: newTheme })
+    if (newTheme === 'light') {
+      document.documentElement.classList.add('theme-light')
+    } else {
+      document.documentElement.classList.remove('theme-light')
+    }
+  }
+
+  function handleGoalChange(field, value) {
+    const val = parseInt(value, 10) || 0
+    const newGoals = { ...goals, [field]: val }
+    setGoals(newGoals)
+    updateSettings({ goals: newGoals })
+  }
+
+  function handleExport() {
+    const ok = exportData()
+    showStatus(
+      ok ? 'Файл lifetracker-backup.json завантажено!' : 'Помилка при експорті.',
+      ok ? 'ok' : 'err'
+    )
+  }
+
+  function handleImportClick() {
+    importRef.current?.click()
+  }
+
+  async function handleImportFile(e) {
+    const file = e.target.files[0]
+    if (!file) return
+    e.target.value = ''
+
+    const result = await importData(file)
+    showStatus(result.message, result.ok ? 'ok' : 'err')
+    if (result.ok) {
+      // Reload settings to reflect imported state
+      const s = getSettings()
+      if (s.theme) handleThemeChange(s.theme)
+      if (s.goals) setGoals(s.goals)
+    }
+  }
+
+  function handleReset() {
+    if (!confirm('Видалити ВСІ дані LifeTracker? Цю дію неможливо скасувати.')) return
+    clearData()
+    const s = getSettings()
+    if (s.theme) handleThemeChange(s.theme)
+    if (s.goals) setGoals(s.goals)
+    showStatus('Дані повністю очищено.', 'ok')
+  }
+
   return (
     <main
       id="main-content"
@@ -64,10 +163,10 @@ export default function SettingsPage() {
       style={{ minHeight: 0 }}
     >
       <div className="max-w-[800px] mx-auto px-4 sm:px-6 py-8" style={{ paddingBottom: 'calc(6rem + 24px)' }}>
-        
+
         {/* Header */}
         <div className="mb-8 anim-down">
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white mb-1">Settings</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight mb-1" style={{ color: 'var(--t-1)' }}>Settings</h1>
           <p className="text-[14px]" style={{ color: 'var(--t-3)' }}>Manage your preferences and app data.</p>
         </div>
 
@@ -78,11 +177,29 @@ export default function SettingsPage() {
             title="Theme"
             description="Select your preferred color theme."
             rightElement={
-              <div className="flex items-center bg-black/20 rounded-lg p-1 border border-white/10">
-                <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-white/10 text-white shadow-sm transition-all text-[12px] font-medium border border-white/10">
+              <div className="flex items-center rounded-lg p-1 border border-white/10" style={{ background: 'var(--bg-raised)' }}>
+                <button
+                  onClick={() => handleThemeChange('dark')}
+                  className={clsx(
+                    "flex items-center gap-1.5 px-3 py-1.5 rounded-md transition-all text-[12px] font-medium border",
+                    theme === 'dark' 
+                      ? "bg-white/10 shadow-sm border-white/10" 
+                      : "text-gray-400 hover:text-white border-transparent"
+                  )}
+                  style={theme === 'dark' ? { color: 'var(--t-1)' } : {}}
+                >
                   <Moon size={14} /> Dark
                 </button>
-                <button className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-gray-400 hover:text-white transition-all text-[12px] font-medium border border-transparent">
+                <button
+                  onClick={() => handleThemeChange('light')}
+                  className={clsx(
+                    "flex items-center gap-1.5 px-3 py-1.5 rounded-md transition-all text-[12px] font-medium border",
+                    theme === 'light' 
+                      ? "bg-white/10 shadow-sm border-white/10" 
+                      : "text-gray-400 hover:text-white border-transparent"
+                  )}
+                  style={theme === 'light' ? { color: 'var(--t-1)' } : {}}
+                >
                   <Sun size={14} /> Light
                 </button>
               </div>
@@ -90,19 +207,75 @@ export default function SettingsPage() {
           />
         </SettingsSection>
 
+        {/* Nutrition Goals */}
+        <SettingsSection title="Nutrition Goals" icon={Activity} colorClass="text-amber-400">
+          <div className="p-4 sm:px-5">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              <div>
+                <label className="block text-[12px] font-medium mb-1.5" style={{ color: 'var(--t-2)' }}>Calories (kcal)</label>
+                <input
+                  type="number"
+                  value={goals.calories}
+                  onChange={(e) => handleGoalChange('calories', e.target.value)}
+                  className="w-full px-3 py-2 rounded-lg text-sm transition-colors focus:outline-none focus:border-indigo-500"
+                  style={{ background: 'var(--bg-raised)', border: '1px solid var(--border)', color: 'var(--t-1)' }}
+                />
+              </div>
+              <div>
+                <label className="block text-[12px] font-medium mb-1.5" style={{ color: 'var(--t-2)' }}>Protein (g)</label>
+                <input
+                  type="number"
+                  value={goals.protein}
+                  onChange={(e) => handleGoalChange('protein', e.target.value)}
+                  className="w-full px-3 py-2 rounded-lg text-sm transition-colors focus:outline-none focus:border-indigo-500"
+                  style={{ background: 'var(--bg-raised)', border: '1px solid var(--border)', color: 'var(--t-1)' }}
+                />
+              </div>
+              <div>
+                <label className="block text-[12px] font-medium mb-1.5" style={{ color: 'var(--t-2)' }}>Fat (g)</label>
+                <input
+                  type="number"
+                  value={goals.fat}
+                  onChange={(e) => handleGoalChange('fat', e.target.value)}
+                  className="w-full px-3 py-2 rounded-lg text-sm transition-colors focus:outline-none focus:border-indigo-500"
+                  style={{ background: 'var(--bg-raised)', border: '1px solid var(--border)', color: 'var(--t-1)' }}
+                />
+              </div>
+              <div>
+                <label className="block text-[12px] font-medium mb-1.5" style={{ color: 'var(--t-2)' }}>Carbs (g)</label>
+                <input
+                  type="number"
+                  value={goals.carbs}
+                  onChange={(e) => handleGoalChange('carbs', e.target.value)}
+                  className="w-full px-3 py-2 rounded-lg text-sm transition-colors focus:outline-none focus:border-indigo-500"
+                  style={{ background: 'var(--bg-raised)', border: '1px solid var(--border)', color: 'var(--t-1)' }}
+                />
+              </div>
+            </div>
+          </div>
+        </SettingsSection>
+
         {/* Data Management */}
         <SettingsSection title="Data Management" icon={Database} colorClass="text-sky-400">
           <SettingsItem
             icon={Download}
             title="Export Data"
-            description="Download all your health and habit data as a CSV."
-            onClick={() => {}}
+            description="Download all your health and habit data as JSON."
+            onClick={handleExport}
           />
           <SettingsItem
             icon={Upload}
             title="Import Data"
             description="Restore your data from a previous backup file."
-            onClick={() => {}}
+            onClick={handleImportClick}
+          />
+          {/* Hidden file input for import */}
+          <input
+            ref={importRef}
+            type="file"
+            accept="application/json,.json"
+            className="hidden"
+            onChange={handleImportFile}
           />
         </SettingsSection>
 
@@ -113,7 +286,7 @@ export default function SettingsPage() {
             title="Reset All Data"
             description="Permanently delete all your records and start fresh."
             isDestructive={true}
-            onClick={() => {}}
+            onClick={handleReset}
           />
         </SettingsSection>
 
@@ -124,16 +297,18 @@ export default function SettingsPage() {
               <Heart size={32} className="text-white" fill="white" />
             </div>
             <div>
-              <p className="text-xl font-bold text-white tracking-tight">LifeTracker</p>
-              <p className="text-sm text-gray-400 mt-1 font-medium">Version 1.0.0</p>
+              <p className="text-xl font-bold tracking-tight" style={{ color: 'var(--t-1)' }}>LifeTracker</p>
+              <p className="text-sm mt-1 font-medium" style={{ color: 'var(--t-3)' }}>Version 1.0.0</p>
             </div>
-            <p className="text-[13px] text-gray-400 max-w-sm mt-2 leading-relaxed">
+            <p className="text-[13px] max-w-sm mt-2 leading-relaxed" style={{ color: 'var(--t-2)' }}>
               Designed with care to help you track your daily wellness, habits, and productivity. Your data stays entirely on your device.
             </p>
           </div>
         </SettingsSection>
 
       </div>
+
+      <StatusToast message={status.message} type={status.type} />
     </main>
   )
 }

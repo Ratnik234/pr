@@ -1,16 +1,19 @@
-import { Flame, CalendarCheck, CheckSquare, Trophy, ArrowUp, ArrowDown } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { Flame, CalendarCheck, CheckSquare, Trophy, ArrowUp, ArrowDown, Plus } from 'lucide-react'
 import {
   Chart as ChartJS,
   CategoryScale,
   LinearScale,
   PointElement,
   LineElement,
+  BarElement,
   Title,
   Tooltip,
   Filler,
   Legend,
 } from 'chart.js'
-import { Line } from 'react-chartjs-2'
+import { Line, Bar } from 'react-chartjs-2'
+import { getDayTotals, computeStreak, getSettings, getEntries, addEntry, updateEntry, todayStr } from '../../utils/storage'
 
 // Register Chart.js components
 ChartJS.register(
@@ -18,6 +21,7 @@ ChartJS.register(
   LinearScale,
   PointElement,
   LineElement,
+  BarElement,
   Title,
   Tooltip,
   Filler,
@@ -26,6 +30,20 @@ ChartJS.register(
 
 function clsx(...args) { return args.filter(Boolean).join(' ') }
 
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+function getLast7Days() {
+  return Array.from({ length: 7 }, (_, i) => {
+    const d = new Date()
+    d.setDate(d.getDate() - (6 - i))
+    return d.toISOString().slice(0, 10)
+  })
+}
+
+function shortDay(isoDate) {
+  return new Date(isoDate).toLocaleDateString('en-US', { weekday: 'short' })
+}
+
+// ─── Components ───────────────────────────────────────────────────────────────
 function StatCard({ title, value, subtitle, trend, Icon, gradientClass, delay }) {
   const isUp = trend >= 0
   return (
@@ -70,21 +88,83 @@ function RecentStatItem({ title, value, date, isPositive }) {
   )
 }
 
+// ─── StatisticsPage ───────────────────────────────────────────────────────────
 export default function StatisticsPage() {
-  // Chart Data
-  const data = {
-    labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+  const [weeklyData, setWeeklyData] = useState({ labels: [], values: [], calorieLimit: 2200 })
+  const [weightData, setWeightData] = useState({ labels: [], values: [] })
+  const [streak, setStreak] = useState(0)
+  const [totalWeekCal, setTotalWeekCal] = useState(0)
+  const [newWeight, setNewWeight] = useState('')
+
+  useEffect(() => {
+    loadData()
+  }, [])
+
+  function loadData() {
+    const days = getLast7Days()
+    const goal = getSettings()?.goals?.calories ?? 2200
+    const values = days.map(d => getDayTotals(d).calories)
+    const total = values.reduce((a, b) => a + b, 0)
+
+    setWeeklyData({
+      labels: days.map(shortDay),
+      values,
+      calorieLimit: goal,
+    })
+    setTotalWeekCal(total)
+    setStreak(computeStreak())
+
+    // Weight Data
+    const allWeights = getEntries('weight')
+    let lastWeight = null
+    const wValues = days.map(d => {
+      // get weight for this day
+      const entry = allWeights.find(w => w.date === d)
+      if (entry) lastWeight = entry.val
+      return lastWeight
+    })
+    setWeightData({
+      labels: days.map(shortDay),
+      values: wValues
+    })
+  }
+
+  function handleAddWeight() {
+    const val = parseFloat(newWeight)
+    if (!isNaN(val) && val > 0) {
+      // check if today already has weight
+      const allWeights = getEntries('weight')
+      const today = todayStr()
+      const existing = allWeights.find(w => w.date === today)
+      // the schema doesn't provide update for generic 'update by date', so I'll just addEntry which assigns new id
+      // Ideally I would update it, but addEntry is fine if we just pick the latest or filter.
+      // Actually storage.js updateEntry needs ID.
+      if (existing) {
+        updateEntry('weight', existing.id, { val })
+        setNewWeight('')
+        loadData()
+      } else {
+        addEntry('weight', { val })
+        setNewWeight('')
+        loadData()
+      }
+    }
+  }
+
+  // ─── Line chart (weekly calories) ─────────────────────────────────────────
+  const lineData = {
+    labels: weeklyData.labels,
     datasets: [
       {
         fill: true,
-        label: 'Calories Burned',
-        data: [450, 520, 380, 610, 590, 480, 720],
-        borderColor: '#7c3aed', // violet-600
-        backgroundColor: 'rgba(124, 58, 237, 0.2)', // violet with opacity
-        tension: 0.4, // Smooth curve
+        label: 'Calories',
+        data: weeklyData.values,
+        borderColor: '#7c3aed',
+        backgroundColor: 'rgba(124, 58, 237, 0.2)',
+        tension: 0.4,
         borderWidth: 3,
-        pointBackgroundColor: '#12121a', // inner color
-        pointBorderColor: '#a78bfa', // outer color
+        pointBackgroundColor: '#12121a',
+        pointBorderColor: '#a78bfa',
         pointBorderWidth: 2,
         pointRadius: 4,
         pointHoverRadius: 6,
@@ -92,13 +172,48 @@ export default function StatisticsPage() {
     ],
   }
 
-  const options = {
+  // ─── Line chart (weekly weight) ───────────────────────────────────────────
+  const weightChartData = {
+    labels: weightData.labels,
+    datasets: [
+      {
+        fill: true,
+        label: 'Weight (kg)',
+        data: weightData.values,
+        borderColor: '#0ea5e9',
+        backgroundColor: 'rgba(14, 165, 233, 0.2)',
+        tension: 0.4,
+        borderWidth: 3,
+        pointBackgroundColor: '#12121a',
+        pointBorderColor: '#38bdf8',
+        pointBorderWidth: 2,
+        pointRadius: 4,
+        pointHoverRadius: 6,
+        spanGaps: true
+      },
+    ],
+  }
+
+  // ─── Bar chart (daily breakdown vs goal) ──────────────────────────────────
+  const barData = {
+    labels: weeklyData.labels,
+    datasets: [
+      {
+        label: 'Calories',
+        data: weeklyData.values,
+        backgroundColor: weeklyData.values.map(v =>
+          v > weeklyData.calorieLimit ? 'rgba(239,68,68,0.7)' : 'rgba(79,122,74,0.7)'
+        ),
+        borderRadius: 6,
+      },
+    ],
+  }
+
+  const commonOptions = {
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
-      legend: {
-        display: false,
-      },
+      legend: { display: false },
       tooltip: {
         backgroundColor: 'rgba(18, 18, 26, 0.9)',
         titleColor: '#e9d5ff',
@@ -112,33 +227,27 @@ export default function StatisticsPage() {
     },
     scales: {
       y: {
-        grid: {
-          color: 'rgba(255, 255, 255, 0.05)',
-          drawBorder: false,
-        },
-        ticks: {
-          color: 'rgba(255, 255, 255, 0.5)',
-          font: { size: 11, family: 'Inter' },
-          padding: 10,
-        },
+        grid: { color: 'rgba(255, 255, 255, 0.05)', drawBorder: false },
+        ticks: { color: 'rgba(255, 255, 255, 0.5)', font: { size: 11, family: 'Inter' }, padding: 10 },
         beginAtZero: true,
       },
       x: {
-        grid: {
-          display: false,
-          drawBorder: false,
-        },
-        ticks: {
-          color: 'rgba(255, 255, 255, 0.5)',
-          font: { size: 12, family: 'Inter' },
-          padding: 10,
-        },
+        grid: { display: false, drawBorder: false },
+        ticks: { color: 'rgba(255, 255, 255, 0.5)', font: { size: 12, family: 'Inter' }, padding: 10 },
       },
     },
-    interaction: {
-      intersect: false,
-      mode: 'index',
-    },
+    interaction: { intersect: false, mode: 'index' },
+  }
+  
+  const weightChartOptions = {
+    ...commonOptions,
+    scales: {
+      ...commonOptions.scales,
+      y: {
+        ...commonOptions.scales.y,
+        beginAtZero: false
+      }
+    }
   }
 
   return (
@@ -149,46 +258,46 @@ export default function StatisticsPage() {
       style={{ minHeight: 0 }}
     >
       <div className="max-w-[1200px] mx-auto px-4 sm:px-6 py-8 space-y-8" style={{ paddingBottom: 'calc(6rem + 24px)' }}>
-        
+
         {/* Header */}
         <div className="anim-down">
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white mb-1">Statistics</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight mb-1" style={{ color: 'var(--t-1)' }}>Statistics</h1>
           <p className="text-[14px]" style={{ color: 'var(--t-3)' }}>Deep dive into your health and productivity data.</p>
         </div>
 
         {/* 4 Info Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
           <StatCard
-            title="Total Calories"
-            value="14,240"
-            subtitle="Burned this month"
-            trend={12}
+            title="Weekly Calories"
+            value={totalWeekCal.toLocaleString()}
+            subtitle="Total this week"
+            trend={0}
             Icon={Flame}
             gradientClass="bg-gradient-to-br from-orange-400 to-pink-500"
             delay="anim-delay-1"
           />
           <StatCard
-            title="Completed Days"
-            value="24"
-            subtitle="Goals met this month"
-            trend={5}
+            title="Streak"
+            value={streak}
+            subtitle={streak === 1 ? '1 day in a row' : `${streak} days in a row`}
+            trend={streak > 0 ? 5 : 0}
             Icon={CalendarCheck}
             gradientClass="bg-gradient-to-br from-violet-500 to-indigo-600"
             delay="anim-delay-2"
           />
           <StatCard
-            title="Tasks"
-            value="128"
-            subtitle="Tasks completed"
-            trend={-2}
+            title="Daily Goal"
+            value={`${weeklyData.calorieLimit}`}
+            subtitle="kcal target / day"
+            trend={0}
             Icon={CheckSquare}
             gradientClass="bg-gradient-to-br from-sky-400 to-blue-600"
             delay="anim-delay-3"
           />
           <StatCard
-            title="Records"
-            value="7"
-            subtitle="Personal bests hit"
+            title="Days Tracked"
+            value={weeklyData.values.filter(v => v > 0).length}
+            subtitle="Out of last 7 days"
             trend={18}
             Icon={Trophy}
             gradientClass="bg-gradient-to-br from-amber-400 to-orange-500"
@@ -196,54 +305,86 @@ export default function StatisticsPage() {
           />
         </div>
 
-        {/* Chart Section */}
-        <section aria-labelledby="chart-heading" className="glass-card p-6 anim-up anim-delay-5">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-4 border-b border-white/5 pb-4">
+        {/* Weight Tracking */}
+        <section aria-labelledby="weight-heading" className="glass-card p-6 anim-up anim-delay-5">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-4 border-b pb-4" style={{ borderColor: 'var(--border)' }}>
             <div>
-              <h2 id="chart-heading" className="text-lg font-bold text-white tracking-tight">Weekly Progress</h2>
-              <p className="text-[13px] mt-0.5" style={{ color: 'var(--t-3)' }}>Calories burned over the last 7 days.</p>
+              <h2 id="weight-heading" className="text-lg font-bold tracking-tight" style={{ color: 'var(--t-1)' }}>Weight Tracking</h2>
+              <p className="text-[13px] mt-0.5" style={{ color: 'var(--t-3)' }}>Log your weight and monitor progress.</p>
             </div>
-            <select className="bg-black/20 border border-white/10 text-white text-sm font-medium rounded-lg px-4 py-2 outline-none focus:border-violet-500 transition-colors cursor-pointer appearance-none min-w-[120px]">
-              <option value="this-week" className="bg-[#12121a]">This Week</option>
-              <option value="last-week" className="bg-[#12121a]">Last Week</option>
-              <option value="this-month" className="bg-[#12121a]">This Month</option>
-            </select>
+            <div className="flex gap-2">
+              <input
+                type="number"
+                placeholder="Weight (kg)"
+                value={newWeight}
+                onChange={(e) => setNewWeight(e.target.value)}
+                className="w-32 px-3 py-2 rounded-lg text-sm transition-colors focus:outline-none focus:border-indigo-500"
+                style={{ background: 'var(--bg-raised)', border: '1px solid var(--border)', color: 'var(--t-1)' }}
+              />
+              <button 
+                onClick={handleAddWeight}
+                className="btn-primary px-4 py-2 rounded-lg text-sm flex items-center gap-2"
+              >
+                <Plus size={16} /> Log
+              </button>
+            </div>
           </div>
-          
-          <div className="w-full h-[300px] sm:h-[350px]">
-            <Line data={data} options={options} />
+          <div className="w-full h-[260px] sm:h-[300px]">
+            <Line data={weightChartData} options={weightChartOptions} />
           </div>
         </section>
 
-        {/* Recent Statistics */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+          {/* Line Chart — Weekly Trend */}
+          <section aria-labelledby="chart-heading" className="glass-card p-6 anim-up anim-delay-5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-4 border-b pb-4" style={{ borderColor: 'var(--border)' }}>
+              <div>
+                <h2 id="chart-heading" className="text-lg font-bold tracking-tight" style={{ color: 'var(--t-1)' }}>Weekly Calorie Trend</h2>
+                <p className="text-[13px] mt-0.5" style={{ color: 'var(--t-3)' }}>Calories consumed over the last 7 days.</p>
+              </div>
+            </div>
+            <div className="w-full h-[260px]">
+              <Line data={lineData} options={commonOptions} />
+            </div>
+          </section>
+
+          {/* Bar Chart — vs Goal */}
+          <section aria-labelledby="bar-heading" className="glass-card p-6 anim-up anim-delay-6">
+            <div className="mb-6 border-b pb-4" style={{ borderColor: 'var(--border)' }}>
+              <h2 id="bar-heading" className="text-lg font-bold tracking-tight" style={{ color: 'var(--t-1)' }}>Daily vs. Goal</h2>
+              <p className="text-[13px] mt-0.5" style={{ color: 'var(--t-3)' }}>
+                Green = within goal · <span style={{ color: '#f87171' }}>Red = over goal</span>
+              </p>
+            </div>
+            <div className="w-full h-[260px]">
+              <Bar data={barData} options={commonOptions} />
+            </div>
+          </section>
+        </div>
+
+        {/* Recent Highlights */}
         <section aria-labelledby="recent-heading" className="glass-card p-6 anim-up anim-delay-6">
-          <h2 id="recent-heading" className="text-lg font-bold text-white tracking-tight mb-5 pb-4 border-b border-white/5">
-            Recent Statistics
+          <h2 id="recent-heading" className="text-lg font-bold tracking-tight mb-5 pb-4 border-b" style={{ color: 'var(--t-1)', borderColor: 'var(--border)' }}>
+            Highlights
           </h2>
           <div className="space-y-1">
             <RecentStatItem
-              title="Longest Running Streak"
-              date="Jul 5, 2026"
-              value="14 Days"
+              title="Current Streak"
+              date="Days in a row with logged meals"
+              value={`${streak} days`}
+              isPositive={streak > 0}
+            />
+            <RecentStatItem
+              title="Weekly Total Calories"
+              date="Sum of last 7 days"
+              value={`${totalWeekCal.toLocaleString()} kcal`}
+              isPositive={totalWeekCal <= weeklyData.calorieLimit * 7}
+            />
+            <RecentStatItem
+              title="Days Tracked This Week"
+              date="Days with at least one food entry"
+              value={`${weeklyData.values.filter(v => v > 0).length} / 7`}
               isPositive={true}
-            />
-            <RecentStatItem
-              title="Highest Calorie Intake"
-              date="Jul 4, 2026"
-              value="3,200 kcal"
-              isPositive={false}
-            />
-            <RecentStatItem
-              title="Most Tasks Completed"
-              date="Jul 2, 2026"
-              value="12 Tasks"
-              isPositive={true}
-            />
-            <RecentStatItem
-              title="Lowest Sleep Duration"
-              date="Jun 28, 2026"
-              value="4.5 Hours"
-              isPositive={false}
             />
           </div>
         </section>
