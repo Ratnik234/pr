@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { ChevronLeft, ChevronRight, CheckCircle2, FileText, Utensils, Plus, Trash2, X } from 'lucide-react'
-import { getEntries, getCaloriesByDate, updateEntry, addEntry, deleteEntry } from '../../utils/storage'
+import { getEntries, getCaloriesByDate, updateEntry, addEntry, deleteEntry, uid } from '../../utils/storage'
 
 // Helper for classes
 function clsx(...args) { return args.filter(Boolean).join(' ') }
@@ -9,8 +9,8 @@ const DAYS_OF_WEEK = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
 
 // Helper to format Date to YYYY-MM-DD
 function toDateStr(d) {
-  const y = d.getFullYear()
-  const m = String(d.getMonth() + 1).padStart(2, '0')
+  const y   = d.getFullYear()
+  const m   = String(d.getMonth() + 1).padStart(2, '0')
   const day = String(d.getDate()).padStart(2, '0')
   return `${y}-${m}-${day}`
 }
@@ -18,13 +18,13 @@ function toDateStr(d) {
 function AddEntryModal({ onClose, onAdd, selectedDateStr }) {
   const [type, setType] = useState('task') // 'task' | 'note'
   const [text, setText] = useState('')
-  
+
   const handleSubmit = (e) => {
     e.preventDefault()
     if (!text.trim()) return
     onAdd(type, text)
   }
-  
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm anim-up">
       <div className="w-full max-w-sm p-6 rounded-[24px] shadow-2xl glass-card relative" style={{ background: 'var(--bg-panel)' }}>
@@ -34,14 +34,14 @@ function AddEntryModal({ onClose, onAdd, selectedDateStr }) {
         <h2 className="text-xl font-bold mb-6" style={{ color: 'var(--t-1)' }}>Add Entry ({selectedDateStr})</h2>
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div className="flex gap-2">
-            <button 
+            <button
               type="button"
               onClick={() => setType('task')}
               className={clsx("flex-1 py-2 rounded-lg text-sm font-semibold transition-colors", type === 'task' ? "bg-indigo-500/20 text-indigo-400 border border-indigo-500/30" : "bg-white/5 text-gray-400 border border-transparent")}
             >
               Task
             </button>
-            <button 
+            <button
               type="button"
               onClick={() => setType('note')}
               className={clsx("flex-1 py-2 rounded-lg text-sm font-semibold transition-colors", type === 'note' ? "bg-sky-500/20 text-sky-400 border border-sky-500/30" : "bg-white/5 text-gray-400 border border-transparent")}
@@ -49,7 +49,7 @@ function AddEntryModal({ onClose, onAdd, selectedDateStr }) {
               Note
             </button>
           </div>
-          
+
           {type === 'task' ? (
             <input
               type="text"
@@ -71,7 +71,7 @@ function AddEntryModal({ onClose, onAdd, selectedDateStr }) {
               autoFocus
             />
           )}
-          
+
           <button type="submit" className="btn-primary w-full py-3 rounded-xl mt-2 text-[15px]">
             Save
           </button>
@@ -82,142 +82,115 @@ function AddEntryModal({ onClose, onAdd, selectedDateStr }) {
 }
 
 export default function CalendarPage() {
-  const [currentDate, setCurrentDate] = useState(new Date())
+  const [currentDate,  setCurrentDate]  = useState(new Date())
   const [selectedDate, setSelectedDate] = useState(new Date())
-  
+
   // Storage Data
   const [tasks, setTasks] = useState([])
   const [meals, setMeals] = useState([])
   const [notes, setNotes] = useState([])
-  
+  // All tasks for calendar indicators (async)
+  const [allTaskDates, setAllTaskDates] = useState(new Set())
+
   const [showAddModal, setShowAddModal] = useState(false)
 
   const selectedDateStr = useMemo(() => toDateStr(selectedDate), [selectedDate])
 
-  const loadData = () => {
-    setTasks(getEntries('tasks', t => t.date === selectedDateStr))
-    setMeals(getCaloriesByDate(selectedDateStr))
-    setNotes(getEntries('notes', n => n.date === selectedDateStr))
+  // ─── Load selected day data ───────────────────────────────────────────────
+  const loadData = async () => {
+    const [dayTasks, dayMeals, dayNotes] = await Promise.all([
+      getEntries('tasks',  t => t.date === selectedDateStr),
+      getCaloriesByDate(selectedDateStr),
+      getEntries('notes',  n => n.date === selectedDateStr),
+    ])
+    setTasks(dayTasks)
+    setMeals(dayMeals)
+    setNotes(dayNotes)
   }
 
-  // Load data when selected date changes
+  // Load all task dates for calendar indicators
+  const loadAllTaskDates = async () => {
+    const all = await getEntries('tasks')
+    setAllTaskDates(new Set(all.map(t => t.date)))
+  }
+
   useEffect(() => {
     loadData()
-  }, [selectedDateStr])
+  }, [selectedDateStr])  // eslint-disable-line react-hooks/exhaustive-deps
 
-  const handleTaskToggle = (task) => {
-    const updated = updateEntry('tasks', task.id, { completed: !task.completed })
+  useEffect(() => {
+    loadAllTaskDates()
+  }, [tasks])  // refresh indicators when tasks change  // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ─── Handlers ─────────────────────────────────────────────────────────────
+  const handleTaskToggle = async (task) => {
+    const updated = await updateEntry('tasks', task.id, { completed: !task.completed })
     if (updated) {
       setTasks(prev => prev.map(t => t.id === task.id ? updated : t))
     }
   }
 
-  const handleDeleteTask = (id) => {
-    if (confirm("Delete this task?")) {
-      deleteEntry('tasks', id)
+  const handleDeleteTask = async (id) => {
+    if (confirm('Delete this task?')) {
+      await deleteEntry('tasks', id)
       loadData()
     }
   }
 
-  const handleDeleteNote = (id) => {
-    if (confirm("Delete this note?")) {
-      deleteEntry('notes', id)
+  const handleDeleteNote = async (id) => {
+    if (confirm('Delete this note?')) {
+      await deleteEntry('notes', id)
       loadData()
     }
   }
 
-  const handleAddEntry = (type, text) => {
+  // Add entry for a specific selected date (not necessarily today)
+  const handleAddEntry = async (type, text) => {
+    const entryId = uid()
     if (type === 'task') {
-      // Create manually to enforce the selected date
-      const data = JSON.parse(localStorage.getItem('lifetracker_data') || '{}')
-      if (!data.tasks) data.tasks = []
-      data.tasks.push({
-        id: Date.now().toString(36) + Math.random().toString(36).slice(2, 7),
-        date: selectedDateStr,
-        title: text,
-        completed: false
-      })
-      localStorage.setItem('lifetracker_data', JSON.stringify(data))
+      await addEntry('tasks', { id: entryId, date: selectedDateStr, title: text, completed: false })
     } else {
-      const data = JSON.parse(localStorage.getItem('lifetracker_data') || '{}')
-      if (!data.notes) data.notes = []
-      data.notes.push({
-        id: Date.now().toString(36) + Math.random().toString(36).slice(2, 7),
-        date: selectedDateStr,
-        content: text
-      })
-      localStorage.setItem('lifetracker_data', JSON.stringify(data))
+      await addEntry('notes', { id: entryId, date: selectedDateStr, content: text })
     }
     setShowAddModal(false)
     loadData()
+    loadAllTaskDates()
   }
 
-  const year = currentDate.getFullYear()
+  // ─── Calendar grid ────────────────────────────────────────────────────────
+  const year  = currentDate.getFullYear()
   const month = currentDate.getMonth()
 
-  const daysInMonth = new Date(year, month + 1, 0).getDate()
-  const firstDayIndex = new Date(year, month, 1).getDay()
+  const daysInMonth     = new Date(year, month + 1, 0).getDate()
+  const firstDayIndex   = new Date(year, month, 1).getDay()
   const daysInPrevMonth = new Date(year, month, 0).getDate()
 
   const prevMonth = () => setCurrentDate(new Date(year, month - 1, 1))
   const nextMonth = () => setCurrentDate(new Date(year, month + 1, 1))
-  const goToday = () => {
+  const goToday   = () => {
     const today = new Date()
     setCurrentDate(new Date(today.getFullYear(), today.getMonth(), 1))
     setSelectedDate(today)
   }
 
-  // Generate calendar grid
   const days = []
-  
-  // Previous month days
   for (let i = firstDayIndex - 1; i >= 0; i--) {
-    days.push({
-      date: new Date(year, month - 1, daysInPrevMonth - i),
-      isCurrentMonth: false,
-    })
+    days.push({ date: new Date(year, month - 1, daysInPrevMonth - i), isCurrentMonth: false })
   }
-  
-  // Current month days
   for (let i = 1; i <= daysInMonth; i++) {
-    days.push({
-      date: new Date(year, month, i),
-      isCurrentMonth: true,
-    })
+    days.push({ date: new Date(year, month, i), isCurrentMonth: true })
   }
-  
-  // Next month days to fill the grid (up to 42 slots = 6 weeks)
-  const totalSlots = 42; 
-  const remaining = totalSlots - days.length
+  const remaining = 42 - days.length
   for (let i = 1; i <= remaining; i++) {
-    days.push({
-      date: new Date(year, month + 1, i),
-      isCurrentMonth: false,
-    })
+    days.push({ date: new Date(year, month + 1, i), isCurrentMonth: false })
   }
 
-  const isToday = (d) => {
-    const today = new Date()
-    return d.getDate() === today.getDate() &&
-           d.getMonth() === today.getMonth() &&
-           d.getFullYear() === today.getFullYear()
-  }
+  const isToday    = (d) => { const t = new Date(); return d.getDate() === t.getDate() && d.getMonth() === t.getMonth() && d.getFullYear() === t.getFullYear() }
+  const isSelected = (d) => d.getDate() === selectedDate.getDate() && d.getMonth() === selectedDate.getMonth() && d.getFullYear() === selectedDate.getFullYear()
+  const hasData    = (d) => allTaskDates.has(toDateStr(d))
 
-  const isSelected = (d) => {
-    return d.getDate() === selectedDate.getDate() &&
-           d.getMonth() === selectedDate.getMonth() &&
-           d.getFullYear() === selectedDate.getFullYear()
-  }
-
-  const formatHeader = (d) => d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+  const formatHeader       = (d) => d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
   const formatSelectedDate = (d) => d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
-
-  // Mock checking if a day has data for indicators
-  const allTasks = useMemo(() => getEntries('tasks'), [tasks]) // dependency to trigger re-render on add
-  const hasData = (d) => {
-    const dStr = toDateStr(d)
-    return allTasks.some(t => t.date === dStr)
-  }
 
   return (
     <main
@@ -231,16 +204,15 @@ export default function CalendarPage() {
         style={{ paddingBottom: 'calc(6rem + 24px)' }}
       >
         <div className="flex flex-col lg:flex-row gap-6 items-start">
-          
+
           {/* ── Left Side: Large Calendar ── */}
           <div className="flex-1 w-full glass-card p-4 sm:p-6 anim-up">
-            
+
             {/* Header Controls */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
               <h1 className="text-2xl sm:text-3xl font-bold tracking-tight" style={{ color: 'var(--t-1)' }}>
                 {formatHeader(currentDate)}
               </h1>
-              
               <div className="flex items-center gap-3">
                 <button
                   onClick={goToday}
@@ -250,21 +222,11 @@ export default function CalendarPage() {
                   Today
                 </button>
                 <div className="flex items-center rounded-xl overflow-hidden" style={{ border: '1px solid var(--border)' }}>
-                  <button
-                    onClick={prevMonth}
-                    className="p-2 transition-colors hover:brightness-110"
-                    style={{ background: 'var(--bg-hover)', color: 'var(--t-2)' }}
-                    aria-label="Previous month"
-                  >
+                  <button onClick={prevMonth} className="p-2 transition-colors hover:brightness-110" style={{ background: 'var(--bg-hover)', color: 'var(--t-2)' }} aria-label="Previous month">
                     <ChevronLeft size={20} />
                   </button>
                   <div className="w-px h-5" style={{ background: 'var(--border)' }} />
-                  <button
-                    onClick={nextMonth}
-                    className="p-2 transition-colors hover:brightness-110"
-                    style={{ background: 'var(--bg-hover)', color: 'var(--t-2)' }}
-                    aria-label="Next month"
-                  >
+                  <button onClick={nextMonth} className="p-2 transition-colors hover:brightness-110" style={{ background: 'var(--bg-hover)', color: 'var(--t-2)' }} aria-label="Next month">
                     <ChevronRight size={20} />
                   </button>
                 </div>
@@ -273,7 +235,6 @@ export default function CalendarPage() {
 
             {/* Grid */}
             <div className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--border)' }}>
-              
               {/* Days Header */}
               <div className="grid grid-cols-7 border-b" style={{ borderColor: 'var(--border)', background: 'var(--bg-raised)' }}>
                 {DAYS_OF_WEEK.map(day => (
@@ -282,12 +243,11 @@ export default function CalendarPage() {
                   </div>
                 ))}
               </div>
-              
               {/* Calendar Cells */}
               <div className="grid grid-cols-7 gap-px" style={{ background: 'var(--border)' }}>
                 {days.map((dayObj, i) => {
-                  const today = isToday(dayObj.date)
-                  const selected = isSelected(dayObj.date)
+                  const today       = isToday(dayObj.date)
+                  const selected    = isSelected(dayObj.date)
                   const hasActivity = hasData(dayObj.date)
                   return (
                     <div
@@ -312,8 +272,6 @@ export default function CalendarPage() {
                           {dayObj.date.getDate()}
                         </span>
                       </div>
-                      
-                      {/* Events Indicator */}
                       {dayObj.isCurrentMonth && hasActivity && (
                         <div className="px-1.5 py-0.5 mb-1 text-[10px] sm:text-[11px] font-medium rounded truncate" style={{ background: 'rgba(124,58,237,0.15)', color: '#a78bfa' }}>
                           Activity Logged
@@ -328,7 +286,6 @@ export default function CalendarPage() {
 
           {/* ── Right Side: Selected Day Card ── */}
           <div className="w-full lg:w-[320px] xl:w-[380px] flex-shrink-0 glass-card p-6 anim-up anim-delay-2 lg:sticky lg:top-24">
-            
             <div className="flex items-center justify-between mb-6 border-b pb-4" style={{ borderColor: 'var(--border)' }}>
               <h2 className="text-lg sm:text-xl font-bold tracking-tight" style={{ color: 'var(--t-1)' }}>
                 {formatSelectedDate(selectedDate)}
@@ -413,11 +370,10 @@ export default function CalendarPage() {
                 )}
               </div>
             </div>
-
           </div>
         </div>
       </div>
-      
+
       {showAddModal && (
         <AddEntryModal
           selectedDateStr={selectedDateStr}

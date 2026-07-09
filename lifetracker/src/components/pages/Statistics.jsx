@@ -90,123 +90,110 @@ function RecentStatItem({ title, value, date, isPositive }) {
 
 // ─── StatisticsPage ───────────────────────────────────────────────────────────
 export default function StatisticsPage() {
-  const [weeklyData, setWeeklyData] = useState({ labels: [], values: [], calorieLimit: 2200 })
-  const [weightData, setWeightData] = useState({ labels: [], values: [] })
-  const [streak, setStreak] = useState(0)
-  const [totalWeekCal, setTotalWeekCal] = useState(0)
-  const [newWeight, setNewWeight] = useState('')
+  const [weeklyData,    setWeeklyData]    = useState({ labels: [], values: [], calorieLimit: 2200 })
+  const [weightData,    setWeightData]    = useState({ labels: [], values: [] })
+  const [streak,        setStreak]        = useState(0)
+  const [totalWeekCal,  setTotalWeekCal]  = useState(0)
+  const [newWeight,     setNewWeight]     = useState('')
 
-  useEffect(() => {
-    loadData()
-  }, [])
+  useEffect(() => { loadData() }, [])  // eslint-disable-line react-hooks/exhaustive-deps
 
-  function loadData() {
+  async function loadData() {
     const days = getLast7Days()
-    const goal = getSettings()?.goals?.calories ?? 2200
-    const values = days.map(d => getDayTotals(d).calories)
-    const total = values.reduce((a, b) => a + b, 0)
 
-    setWeeklyData({
-      labels: days.map(shortDay),
-      values,
-      calorieLimit: goal,
-    })
+    // Parallel fetch of all data
+    const [settingsData, streakVal, ...dayTotals] = await Promise.all([
+      getSettings(),
+      computeStreak(),
+      ...days.map(d => getDayTotals(d)),
+    ])
+
+    const goal   = settingsData?.goals?.calories ?? 2200
+    const values = dayTotals.map(t => t.calories)
+    const total  = values.reduce((a, b) => a + b, 0)
+
+    setWeeklyData({ labels: days.map(shortDay), values, calorieLimit: goal })
     setTotalWeekCal(total)
-    setStreak(computeStreak())
+    setStreak(streakVal)
 
-    // Weight Data
-    const allWeights = getEntries('weight')
+    // Weight data
+    const allWeights = await getEntries('weight')
     let lastWeight = null
     const wValues = days.map(d => {
-      // get weight for this day
       const entry = allWeights.find(w => w.date === d)
-      if (entry) lastWeight = entry.val
+      if (entry) lastWeight = entry.weight
       return lastWeight
     })
-    setWeightData({
-      labels: days.map(shortDay),
-      values: wValues
-    })
+    setWeightData({ labels: days.map(shortDay), values: wValues })
   }
 
-  function handleAddWeight() {
+  async function handleAddWeight() {
     const val = parseFloat(newWeight)
-    if (!isNaN(val) && val > 0) {
-      // check if today already has weight
-      const allWeights = getEntries('weight')
-      const today = todayStr()
-      const existing = allWeights.find(w => w.date === today)
-      // the schema doesn't provide update for generic 'update by date', so I'll just addEntry which assigns new id
-      // Ideally I would update it, but addEntry is fine if we just pick the latest or filter.
-      // Actually storage.js updateEntry needs ID.
-      if (existing) {
-        updateEntry('weight', existing.id, { val })
-        setNewWeight('')
-        loadData()
-      } else {
-        addEntry('weight', { val })
-        setNewWeight('')
-        loadData()
-      }
+    if (isNaN(val) || val <= 0) return
+
+    const allWeights = await getEntries('weight')
+    const today      = todayStr()
+    const existing   = allWeights.find(w => w.date === today)
+
+    if (existing) {
+      await updateEntry('weight', existing.id, { weight: val })
+    } else {
+      await addEntry('weight', { weight: val })
     }
+    setNewWeight('')
+    loadData()
   }
 
   // ─── Line chart (weekly calories) ─────────────────────────────────────────
   const lineData = {
     labels: weeklyData.labels,
-    datasets: [
-      {
-        fill: true,
-        label: 'Calories',
-        data: weeklyData.values,
-        borderColor: '#7c3aed',
-        backgroundColor: 'rgba(124, 58, 237, 0.2)',
-        tension: 0.4,
-        borderWidth: 3,
-        pointBackgroundColor: '#12121a',
-        pointBorderColor: '#a78bfa',
-        pointBorderWidth: 2,
-        pointRadius: 4,
-        pointHoverRadius: 6,
-      },
-    ],
+    datasets: [{
+      fill: true,
+      label: 'Calories',
+      data: weeklyData.values,
+      borderColor: '#7c3aed',
+      backgroundColor: 'rgba(124, 58, 237, 0.2)',
+      tension: 0.4,
+      borderWidth: 3,
+      pointBackgroundColor: '#12121a',
+      pointBorderColor: '#a78bfa',
+      pointBorderWidth: 2,
+      pointRadius: 4,
+      pointHoverRadius: 6,
+    }],
   }
 
   // ─── Line chart (weekly weight) ───────────────────────────────────────────
   const weightChartData = {
     labels: weightData.labels,
-    datasets: [
-      {
-        fill: true,
-        label: 'Weight (kg)',
-        data: weightData.values,
-        borderColor: '#0ea5e9',
-        backgroundColor: 'rgba(14, 165, 233, 0.2)',
-        tension: 0.4,
-        borderWidth: 3,
-        pointBackgroundColor: '#12121a',
-        pointBorderColor: '#38bdf8',
-        pointBorderWidth: 2,
-        pointRadius: 4,
-        pointHoverRadius: 6,
-        spanGaps: true
-      },
-    ],
+    datasets: [{
+      fill: true,
+      label: 'Weight (kg)',
+      data: weightData.values,
+      borderColor: '#0ea5e9',
+      backgroundColor: 'rgba(14, 165, 233, 0.2)',
+      tension: 0.4,
+      borderWidth: 3,
+      pointBackgroundColor: '#12121a',
+      pointBorderColor: '#38bdf8',
+      pointBorderWidth: 2,
+      pointRadius: 4,
+      pointHoverRadius: 6,
+      spanGaps: true,
+    }],
   }
 
   // ─── Bar chart (daily breakdown vs goal) ──────────────────────────────────
   const barData = {
     labels: weeklyData.labels,
-    datasets: [
-      {
-        label: 'Calories',
-        data: weeklyData.values,
-        backgroundColor: weeklyData.values.map(v =>
-          v > weeklyData.calorieLimit ? 'rgba(239,68,68,0.7)' : 'rgba(79,122,74,0.7)'
-        ),
-        borderRadius: 6,
-      },
-    ],
+    datasets: [{
+      label: 'Calories',
+      data: weeklyData.values,
+      backgroundColor: weeklyData.values.map(v =>
+        v > weeklyData.calorieLimit ? 'rgba(239,68,68,0.7)' : 'rgba(79,122,74,0.7)'
+      ),
+      borderRadius: 6,
+    }],
   }
 
   const commonOptions = {
@@ -238,16 +225,10 @@ export default function StatisticsPage() {
     },
     interaction: { intersect: false, mode: 'index' },
   }
-  
+
   const weightChartOptions = {
     ...commonOptions,
-    scales: {
-      ...commonOptions.scales,
-      y: {
-        ...commonOptions.scales.y,
-        beginAtZero: false
-      }
-    }
+    scales: { ...commonOptions.scales, y: { ...commonOptions.scales.y, beginAtZero: false } }
   }
 
   return (
@@ -267,42 +248,10 @@ export default function StatisticsPage() {
 
         {/* 4 Info Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-          <StatCard
-            title="Weekly Calories"
-            value={totalWeekCal.toLocaleString()}
-            subtitle="Total this week"
-            trend={0}
-            Icon={Flame}
-            gradientClass="bg-gradient-to-br from-orange-400 to-pink-500"
-            delay="anim-delay-1"
-          />
-          <StatCard
-            title="Streak"
-            value={streak}
-            subtitle={streak === 1 ? '1 day in a row' : `${streak} days in a row`}
-            trend={streak > 0 ? 5 : 0}
-            Icon={CalendarCheck}
-            gradientClass="bg-gradient-to-br from-violet-500 to-indigo-600"
-            delay="anim-delay-2"
-          />
-          <StatCard
-            title="Daily Goal"
-            value={`${weeklyData.calorieLimit}`}
-            subtitle="kcal target / day"
-            trend={0}
-            Icon={CheckSquare}
-            gradientClass="bg-gradient-to-br from-sky-400 to-blue-600"
-            delay="anim-delay-3"
-          />
-          <StatCard
-            title="Days Tracked"
-            value={weeklyData.values.filter(v => v > 0).length}
-            subtitle="Out of last 7 days"
-            trend={18}
-            Icon={Trophy}
-            gradientClass="bg-gradient-to-br from-amber-400 to-orange-500"
-            delay="anim-delay-4"
-          />
+          <StatCard title="Weekly Calories"  value={totalWeekCal.toLocaleString()}                         subtitle="Total this week"            trend={0}              Icon={Flame}         gradientClass="bg-gradient-to-br from-orange-400 to-pink-500"    delay="anim-delay-1" />
+          <StatCard title="Streak"           value={streak}                                                subtitle={`${streak} days in a row`} trend={streak > 0 ? 5 : 0} Icon={CalendarCheck} gradientClass="bg-gradient-to-br from-violet-500 to-indigo-600" delay="anim-delay-2" />
+          <StatCard title="Daily Goal"       value={weeklyData.calorieLimit}                               subtitle="kcal target / day"          trend={0}              Icon={CheckSquare}   gradientClass="bg-gradient-to-br from-sky-400 to-blue-600"       delay="anim-delay-3" />
+          <StatCard title="Days Tracked"     value={weeklyData.values.filter(v => v > 0).length}           subtitle="Out of last 7 days"         trend={18}             Icon={Trophy}        gradientClass="bg-gradient-to-br from-amber-400 to-orange-500"   delay="anim-delay-4" />
         </div>
 
         {/* Weight Tracking */}
@@ -321,10 +270,7 @@ export default function StatisticsPage() {
                 className="w-32 px-3 py-2 rounded-lg text-sm transition-colors focus:outline-none focus:border-indigo-500"
                 style={{ background: 'var(--bg-raised)', border: '1px solid var(--border)', color: 'var(--t-1)' }}
               />
-              <button 
-                onClick={handleAddWeight}
-                className="btn-primary px-4 py-2 rounded-lg text-sm flex items-center gap-2"
-              >
+              <button onClick={handleAddWeight} className="btn-primary px-4 py-2 rounded-lg text-sm flex items-center gap-2">
                 <Plus size={16} /> Log
               </button>
             </div>
@@ -368,24 +314,9 @@ export default function StatisticsPage() {
             Highlights
           </h2>
           <div className="space-y-1">
-            <RecentStatItem
-              title="Current Streak"
-              date="Days in a row with logged meals"
-              value={`${streak} days`}
-              isPositive={streak > 0}
-            />
-            <RecentStatItem
-              title="Weekly Total Calories"
-              date="Sum of last 7 days"
-              value={`${totalWeekCal.toLocaleString()} kcal`}
-              isPositive={totalWeekCal <= weeklyData.calorieLimit * 7}
-            />
-            <RecentStatItem
-              title="Days Tracked This Week"
-              date="Days with at least one food entry"
-              value={`${weeklyData.values.filter(v => v > 0).length} / 7`}
-              isPositive={true}
-            />
+            <RecentStatItem title="Current Streak"          date="Days in a row with logged meals"    value={`${streak} days`}                             isPositive={streak > 0} />
+            <RecentStatItem title="Weekly Total Calories"   date="Sum of last 7 days"                 value={`${totalWeekCal.toLocaleString()} kcal`}      isPositive={totalWeekCal <= weeklyData.calorieLimit * 7} />
+            <RecentStatItem title="Days Tracked This Week"  date="Days with at least one food entry"  value={`${weeklyData.values.filter(v => v > 0).length} / 7`} isPositive={true} />
           </div>
         </section>
 
