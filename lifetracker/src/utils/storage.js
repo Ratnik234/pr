@@ -1,476 +1,527 @@
 /**
- * utils/storage.js
- * LifeTracker — єдиний модуль для роботи з LocalStorage.
+ * src/utils/storage.js
+ * ─────────────────────────────────────────────────────────────────────────────
+ * LifeTracker — публічне API для роботи з даними.
+ * Всі операції делегуються у SQLite через db.js.
  *
- * Схема даних:
- * {
- *   tasks:    [],            // загальні задачі (для майбутніх розділів)
- *   notes:    [],            // нотатки
- *   calories: [],            // записи харчування (замінює ht_foodEntries)
- *   weight:   [],            // записи ваги (замінює ht_weightLog)
- *   habits:   { defs:[], log:[] },  // трекер звичок
- *   settings: {
- *     theme:    "light",
- *     goals:    { calories:2200, protein:120, fat:70, carbs:250 },
- *     geminiKey: ""
- *   }
- * }
+ * ⚠ Всі функції (крім todayStr / uid) є async.
  *
- * Кожен запис у масивах має поля:
- *   id   — унікальний рядок (uid())
- *   date — "YYYY-MM-DD"
- *   ...решта полів залежно від типу запису
+ * Колекції:
+ *   'calories'   → таблиця calories
+ *   'weight'     → таблиця weight_log
+ *   'tasks'      → таблиця tasks
+ *   'notes'      → таблиця notes
  */
 
+import { run, query } from './db'
 
-// ─── Константи ───────────────────────────────────────────────────────────────
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
+export function uid() {
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 7)
+}
 
-const STORAGE_KEY = "lifetracker_data";
+export function todayStr() {
+  return new Date().toISOString().slice(0, 10)
+}
 
-const REQUIRED_FIELDS = ["tasks", "notes", "calories", "weight", "habits", "settings"];
+// Маппінг: назва колекції → SQL-таблиця
+const TABLE = {
+  calories: 'calories',
+  weight:   'weight_log',
+  tasks:    'tasks',
+  notes:    'notes',
+}
 
-const DEFAULT_DATA = {
-  tasks: [],
-  notes: [],
-  calories: [],
-  weight: [],
-  habits: {
-    defs: [
-      { id: "run", name: "Біг", targetPerWeek: 3 },
-      { id: "gym", name: "Тренування", targetPerWeek: 4 }
-    ],
-    log: []
-  },
-  settings: {
-    theme: "light",
-    goals: { calories: 2200, protein: 120, fat: 70, carbs: 250 },
-    geminiKey: ""
-  }
-};
+// Колонки для SELECT (щоб weight_log мав поле 'weight' у відповіді)
+const SELECT_COLS = {
+  calories:   'id, date, name, calories, protein, fat, carbs, photo',
+  weight_log: 'id, date, weight',
+  tasks:      'id, date, title, completed',
+  notes:      'id, date, content',
+}
 
-// ─── Допоміжні функції ────────────────────────────────────────────────────────
+// ─── Загальні CRUD ────────────────────────────────────────────────────────────
 
 /**
- * Генерує унікальний рядковий ідентифікатор.
- * @returns {string}
+ * Повертає записи з колекції з опціональним фільтром (виконується в JS).
+ * @param {'calories'|'weight'|'tasks'|'notes'} collection
+ * @param {function|null} filterFn
+ * @returns {Promise<Array>}
  */
-function uid() {
-  return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+export async function getEntries(collection, filterFn = null) {
+  const table = TABLE[collection]
+  if (!table) throw new Error(`[Storage] Невідома колекція: ${collection}`)
+  const cols = SELECT_COLS[table] ?? '*'
+  const rows = query(`SELECT ${cols} FROM ${table} ORDER BY date DESC`, [])
+  // completed зберігається як 0/1 у SQLite — конвертуємо в boolean
+  const normalized = rows.map(r => normalizeRow(collection, r))
+  return filterFn ? normalized.filter(filterFn) : normalized
 }
 
 /**
- * Повертає поточну дату у форматі YYYY-MM-DD.
- * @returns {string}
+ * Додає новий запис. Автоматично проставляє id та date (якщо не задані).
+ * @param {'calories'|'weight'|'tasks'|'notes'} collection
+ * @param {object} entry
+ * @returns {Promise<object>} — збережений запис
  */
-function todayStr() {
-  return new Date().toISOString().slice(0, 10);
-}
-
-/**
- * Глибоке злиття об'єктів (target ← source); не перезаписує масиви.
- * @param {object} target
- * @param {object} source
- * @returns {object}
- */
-function deepMerge(target, source) {
-  const result = Object.assign({}, target);
-  for (const key of Object.keys(source)) {
-    if (
-      source[key] !== null &&
-      typeof source[key] === "object" &&
-      !Array.isArray(source[key]) &&
-      typeof target[key] === "object" &&
-      !Array.isArray(target[key])
-    ) {
-      result[key] = deepMerge(target[key] || {}, source[key]);
-    } else {
-      result[key] = source[key];
-    }
-  }
-  return result;
-}
-
-// ─── Базові операції з LocalStorage ──────────────────────────────────────────
-
-/**
- * Зберігає повний об'єкт даних у LocalStorage.
- * @param {object} data
- * @returns {boolean} — true якщо успішно
- */
-function saveData(data) {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-    return true;
-  } catch (err) {
-    console.error("[LifeTracker] saveData failed:", err);
-    return false;
-  }
-}
-
-/**
- * Завантажує дані з LocalStorage. Якщо немає або помилка — повертає DEFAULT_DATA.
- * Відсутні поля автоматично доповнюються з DEFAULT_DATA.
- * @returns {object}
- */
-function loadData() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return structuredClone(DEFAULT_DATA);
-    const parsed = JSON.parse(raw);
-    // Доповнюємо відсутні поля дефолтами (безпечна міграція)
-    return deepMerge(structuredClone(DEFAULT_DATA), parsed);
-  } catch (err) {
-    console.error("[LifeTracker] loadData failed:", err);
-    return structuredClone(DEFAULT_DATA);
-  }
-}
-
-/**
- * Повністю очищає дані LifeTracker у LocalStorage (скидає до DEFAULT_DATA).
- * @returns {boolean}
- */
-function clearData() {
-  try {
-    localStorage.removeItem(STORAGE_KEY);
-    return true;
-  } catch (err) {
-    console.error("[LifeTracker] clearData failed:", err);
-    return false;
-  }
-}
-
-// ─── Експорт / Імпорт ────────────────────────────────────────────────────────
-
-/**
- * Експортує всі дані як JSON-файл lifetracker-backup.json.
- * Використовує Blob + URL.createObjectURL — без зовнішніх бібліотек.
- */
-function exportData() {
-  try {
-    const data = loadData();
-    const json = JSON.stringify(data, null, 2);
-    const blob = new Blob([json], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const anchor = document.createElement("a");
-    anchor.href = url;
-    anchor.download = "lifetracker-backup.json";
-    document.body.appendChild(anchor);
-    anchor.click();
-    document.body.removeChild(anchor);
-    URL.revokeObjectURL(url);
-    return true;
-  } catch (err) {
-    console.error("[LifeTracker] exportData failed:", err);
-    return false;
-  }
-}
-
-/**
- * Імпортує дані з JSON-файлу, перевіряє формат та зберігає в LocalStorage.
- *
- * @param {File} file — об'єкт File (наприклад, із <input type="file">)
- * @returns {Promise<{ ok: boolean, message: string }>}
- */
-function importData(file) {
-  return new Promise((resolve) => {
-    // Перевірка типу файлу
-    if (!file || file.type !== "application/json") {
-      return resolve({ ok: false, message: "Файл повинен бути у форматі JSON (.json)." });
-    }
-
-    const reader = new FileReader();
-
-    reader.onload = (e) => {
-      try {
-        const parsed = JSON.parse(e.target.result);
-
-        // Перевірка обов'язкових полів
-        const missing = REQUIRED_FIELDS.filter((f) => !(f in parsed));
-        if (missing.length > 0) {
-          return resolve({
-            ok: false,
-            message: `Файл пошкоджений або невірного формату. Відсутні поля: ${missing.join(", ")}.`
-          });
-        }
-
-        // Перевірка типів ключових масивів
-        const arrayFields = ["tasks", "notes", "calories", "weight"];
-        for (const field of arrayFields) {
-          if (!Array.isArray(parsed[field])) {
-            return resolve({
-              ok: false,
-              message: `Поле "${field}" повинно бути масивом.`
-            });
-          }
-        }
-
-        // Перевірка структури habits
-        if (
-          typeof parsed.habits !== "object" ||
-          !Array.isArray(parsed.habits.defs) ||
-          !Array.isArray(parsed.habits.log)
-        ) {
-          return resolve({
-            ok: false,
-            message: 'Поле "habits" повинно містити масиви "defs" та "log".'
-          });
-        }
-
-        // Перевірка структури settings
-        if (typeof parsed.settings !== "object" || typeof parsed.settings.goals !== "object") {
-          return resolve({
-            ok: false,
-            message: 'Поле "settings" повинно містити об\'єкт "goals".'
-          });
-        }
-
-        // Зберігаємо — об'єднуємо з дефолтами для безпечної міграції
-        const merged = deepMerge(structuredClone(DEFAULT_DATA), parsed);
-        saveData(merged);
-
-        resolve({ ok: true, message: "Дані успішно імпортовано!" });
-      } catch (err) {
-        resolve({ ok: false, message: "Не вдалося прочитати файл: " + err.message });
-      }
-    };
-
-    reader.onerror = () => {
-      resolve({ ok: false, message: "Помилка читання файлу." });
-    };
-
-    reader.readAsText(file);
-  });
-}
-
-// ─── Загальні CRUD-функції (працюють з будь-яким масивом у схемі) ─────────────
-
-/**
- * Отримує записи з вказаного масиву, з опціональною фільтрацією.
- *
- * @param {"tasks"|"notes"|"calories"|"weight"} collection
- * @param {function|null} filterFn — наприклад: entry => entry.date === "2025-01-01"
- * @returns {Array}
- */
-function getEntries(collection, filterFn = null) {
-  const data = loadData();
-  const arr = data[collection] ?? [];
-  return filterFn ? arr.filter(filterFn) : arr;
-}
-
-/**
- * Додає запис до вказаного масиву. Автоматично проставляє id та date.
- *
- * @param {"tasks"|"notes"|"calories"|"weight"} collection
- * @param {object} entry — поля запису (без id та date, якщо не задані)
- * @returns {object} — доданий запис з id та date
- */
-function addEntry(collection, entry) {
-  const data = loadData();
-  if (!Array.isArray(data[collection])) {
-    throw new Error(`[LifeTracker] Колекція "${collection}" не є масивом.`);
-  }
+export async function addEntry(collection, entry) {
   const newEntry = {
-    id: uid(),
+    id:   uid(),
     date: todayStr(),
-    ...entry
-  };
-  data[collection].push(newEntry);
-  saveData(data);
-  return newEntry;
-}
-
-/**
- * Оновлює запис у вказаному масиві за id.
- *
- * @param {"tasks"|"notes"|"calories"|"weight"} collection
- * @param {string} id
- * @param {object} updates — поля для оновлення
- * @returns {object|null} — оновлений запис або null якщо не знайдено
- */
-function updateEntry(collection, id, updates) {
-  const data = loadData();
-  if (!Array.isArray(data[collection])) {
-    throw new Error(`[LifeTracker] Колекція "${collection}" не є масивом.`);
+    ...entry,
   }
-  const idx = data[collection].findIndex((e) => e.id === id);
-  if (idx === -1) return null;
 
-  data[collection][idx] = { ...data[collection][idx], ...updates };
-  saveData(data);
-  return data[collection][idx];
-}
+  switch (collection) {
+    case 'calories':
+      run(
+        `INSERT INTO calories (id, date, name, calories, protein, fat, carbs, photo)
+         VALUES (?,?,?,?,?,?,?,?)`,
+        [
+          newEntry.id, newEntry.date, newEntry.name ?? '',
+          Number(newEntry.calories) || 0,
+          Number(newEntry.protein)  || 0,
+          Number(newEntry.fat)      || 0,
+          Number(newEntry.carbs)    || 0,
+          newEntry.photo ?? null,
+        ]
+      )
+      break
 
-/**
- * Видаляє запис із вказаного масиву за id.
- *
- * @param {"tasks"|"notes"|"calories"|"weight"} collection
- * @param {string} id
- * @returns {boolean} — true якщо запис знайдено і видалено
- */
-function deleteEntry(collection, id) {
-  const data = loadData();
-  if (!Array.isArray(data[collection])) {
-    throw new Error(`[LifeTracker] Колекція "${collection}" не є масивом.`);
+    case 'weight':
+      run(
+        `INSERT OR REPLACE INTO weight_log (id, date, weight) VALUES (?,?,?)`,
+        [newEntry.id, newEntry.date, Number(newEntry.weight ?? newEntry.val) || 0]
+      )
+      break
+
+    case 'tasks':
+      run(
+        `INSERT INTO tasks (id, date, title, completed) VALUES (?,?,?,?)`,
+        [newEntry.id, newEntry.date, newEntry.title ?? '', newEntry.completed ? 1 : 0]
+      )
+      break
+
+    case 'notes':
+      run(
+        `INSERT INTO notes (id, date, content) VALUES (?,?,?)`,
+        [newEntry.id, newEntry.date, newEntry.content ?? '']
+      )
+      break
+
+    default:
+      throw new Error(`[Storage] addEntry: невідома колекція "${collection}"`)
   }
-  const before = data[collection].length;
-  data[collection] = data[collection].filter((e) => e.id !== id);
-  if (data[collection].length === before) return false;
-  saveData(data);
-  return true;
-}
 
-// ─── Спеціалізовані функції для settings ─────────────────────────────────────
-
-/**
- * Повертає поточні налаштування.
- * @returns {object}
- */
-function getSettings() {
-  return loadData().settings;
+  return newEntry
 }
 
 /**
- * Зберігає оновлені налаштування (часткове оновлення).
- * @param {object} patch — поля для оновлення settings
- * @returns {object} — нові settings
+ * Оновлює запис за id (часткове оновлення).
+ * @param {'calories'|'weight'|'tasks'|'notes'} collection
+ * @param {string} id
+ * @param {object} updates
+ * @returns {Promise<object|null>}
  */
-function updateSettings(patch) {
-  const data = loadData();
-  data.settings = deepMerge(data.settings, patch);
-  saveData(data);
-  return data.settings;
+export async function updateEntry(collection, id, updates) {
+  switch (collection) {
+    case 'calories': {
+      const fields = []
+      const vals   = []
+      const allowed = ['name', 'calories', 'protein', 'fat', 'carbs', 'photo', 'date']
+      for (const [k, v] of Object.entries(updates)) {
+        if (allowed.includes(k)) { fields.push(`${k} = ?`); vals.push(v) }
+      }
+      if (!fields.length) return null
+      vals.push(id)
+      run(`UPDATE calories SET ${fields.join(', ')} WHERE id = ?`, vals)
+      break
+    }
+    case 'weight': {
+      if (updates.weight !== undefined || updates.val !== undefined) {
+        run(`UPDATE weight_log SET weight = ? WHERE id = ?`,
+            [Number(updates.weight ?? updates.val), id])
+      }
+      break
+    }
+    case 'tasks': {
+      const fields = []
+      const vals   = []
+      if (updates.title     !== undefined) { fields.push('title = ?');     vals.push(updates.title) }
+      if (updates.completed !== undefined) { fields.push('completed = ?'); vals.push(updates.completed ? 1 : 0) }
+      if (!fields.length) return null
+      vals.push(id)
+      run(`UPDATE tasks SET ${fields.join(', ')} WHERE id = ?`, vals)
+      break
+    }
+    case 'notes': {
+      if (updates.content !== undefined) {
+        run(`UPDATE notes SET content = ? WHERE id = ?`, [updates.content, id])
+      }
+      break
+    }
+    default:
+      throw new Error(`[Storage] updateEntry: невідома колекція "${collection}"`)
+  }
+
+  // Повертаємо оновлений запис
+  const table = TABLE[collection]
+  const cols  = SELECT_COLS[table] ?? '*'
+  const rows  = query(`SELECT ${cols} FROM ${table} WHERE id = ?`, [id])
+  return rows.length ? normalizeRow(collection, rows[0]) : null
 }
 
-// ─── Спеціалізовані функції для звичок (habits) ───────────────────────────────
+/**
+ * Видаляє запис за id.
+ * @param {'calories'|'weight'|'tasks'|'notes'} collection
+ * @param {string} id
+ * @returns {Promise<boolean>}
+ */
+export async function deleteEntry(collection, id) {
+  const table = TABLE[collection]
+  if (!table) throw new Error(`[Storage] deleteEntry: невідома колекція "${collection}"`)
+  run(`DELETE FROM ${table} WHERE id = ?`, [id])
+  return true
+}
+
+// ─── Settings ─────────────────────────────────────────────────────────────────
 
 /**
- * Повертає визначення звичок.
- * @returns {Array}
+ * Повертає об'єкт налаштувань.
+ * @returns {Promise<object>}
  */
-function getHabitDefs() {
-  return loadData().habits.defs;
+export async function getSettings() {
+  const rows = query('SELECT key, value FROM settings', [])
+  const map  = Object.fromEntries(rows.map(r => [r.key, r.value]))
+  return {
+    theme:     map.theme     ?? 'dark',
+    geminiKey: map.geminiKey ?? '',
+    goals: (() => {
+      try   { return JSON.parse(map.goals) }
+      catch { return { calories: 2200, protein: 120, fat: 70, carbs: 250 } }
+    })(),
+  }
 }
 
 /**
- * Повертає лог звичок (з опціональним фільтром по даті).
- * @param {string|null} fromDate — "YYYY-MM-DD", включно
- * @returns {Array}
+ * Часткове оновлення налаштувань.
+ * @param {object} patch
+ * @returns {Promise<object>} — нові налаштування
  */
-function getHabitLog(fromDate = null) {
-  const log = loadData().habits.log;
-  return fromDate ? log.filter((l) => l.date >= fromDate) : log;
+export async function updateSettings(patch) {
+  if (patch.theme !== undefined) {
+    run(`INSERT OR REPLACE INTO settings (key, value) VALUES ('theme', ?)`, [patch.theme])
+  }
+  if (patch.geminiKey !== undefined) {
+    run(`INSERT OR REPLACE INTO settings (key, value) VALUES ('geminiKey', ?)`, [patch.geminiKey])
+  }
+  if (patch.goals !== undefined) {
+    const cur = await getSettings()
+    const merged = { ...cur.goals, ...patch.goals }
+    run(
+      `INSERT OR REPLACE INTO settings (key, value) VALUES ('goals', ?)`,
+      [JSON.stringify(merged)]
+    )
+  }
+  return getSettings()
+}
+
+// ─── Habits ───────────────────────────────────────────────────────────────────
+
+/**
+ * Повертає масив визначень звичок.
+ * @returns {Promise<Array>}
+ */
+export async function getHabitDefs() {
+  return query('SELECT id, name, target_per_week as targetPerWeek FROM habit_defs', [])
+}
+
+/**
+ * Повертає лог звичок (з опціональним фільтром по даті від).
+ * @param {string|null} fromDate — 'YYYY-MM-DD', включно
+ * @returns {Promise<Array>}
+ */
+export async function getHabitLog(fromDate = null) {
+  if (fromDate) {
+    return query(
+      `SELECT id, date, habit_id as habitId FROM habit_log WHERE date >= ? ORDER BY date DESC`,
+      [fromDate]
+    )
+  }
+  return query('SELECT id, date, habit_id as habitId FROM habit_log ORDER BY date DESC', [])
 }
 
 /**
  * Перемикає виконання звички на сьогодні.
  * @param {string} habitId
  * @param {boolean} done
+ * @returns {Promise<void>}
  */
-function toggleHabit(habitId, done) {
-  const data = loadData();
-  const t = todayStr();
-  const idx = data.habits.log.findIndex((l) => l.date === t && l.habitId === habitId);
-
-  if (done && idx === -1) {
-    data.habits.log.push({ date: t, habitId, done: true });
-  } else if (!done && idx !== -1) {
-    data.habits.log.splice(idx, 1);
+export async function toggleHabit(habitId, done) {
+  const today = todayStr()
+  if (done) {
+    // Перевіряємо чи вже є запис
+    const exists = query(
+      'SELECT id FROM habit_log WHERE date = ? AND habit_id = ?',
+      [today, habitId]
+    )
+    if (!exists.length) {
+      run(
+        'INSERT INTO habit_log (id, date, habit_id) VALUES (?,?,?)',
+        [uid(), today, habitId]
+      )
+    }
+  } else {
+    run('DELETE FROM habit_log WHERE date = ? AND habit_id = ?', [today, habitId])
   }
-  saveData(data);
 }
 
-// ─── Функції для календаря ────────────────────────────────────────────────────
+// ─── Аналітика ───────────────────────────────────────────────────────────────
 
 /**
- * Повертає всі записи харчування за вказану дату.
- * @param {string} date — "YYYY-MM-DD"
- * @returns {Array}
+ * Повертає записи харчування за конкретну дату.
+ * @param {string} date — 'YYYY-MM-DD'
+ * @returns {Promise<Array>}
  */
-function getCaloriesByDate(date) {
-  return getEntries("calories", (e) => e.date === date);
-}
-
-/**
- * Повертає суму калорій та макросів за вказану дату.
- * @param {string} date — "YYYY-MM-DD"
- * @returns {{ calories:number, protein:number, fat:number, carbs:number }}
- */
-function getDayTotals(date) {
-  return getCaloriesByDate(date).reduce(
-    (acc, e) => ({
-      calories: acc.calories + (e.calories || 0),
-      protein: acc.protein + (e.protein || 0),
-      fat: acc.fat + (e.fat || 0),
-      carbs: acc.carbs + (e.carbs || 0)
-    }),
-    { calories: 0, protein: 0, fat: 0, carbs: 0 }
-  );
+export async function getCaloriesByDate(date) {
+  const rows = query(
+    'SELECT id, date, name, calories, protein, fat, carbs, photo FROM calories WHERE date = ? ORDER BY rowid ASC',
+    [date]
+  )
+  return rows
 }
 
 /**
- * Повертає кількість днів поспіль із хоча б одним записом харчування.
- * @returns {number}
+ * Повертає суму калорій та макросів за день.
+ * @param {string} date — 'YYYY-MM-DD'
+ * @returns {Promise<{calories, protein, fat, carbs}>}
  */
-function computeStreak() {
-  const daysWithEntries = new Set(getEntries("calories").map((e) => e.date));
-  let streak = 0;
-  const d = new Date();
+export async function getDayTotals(date) {
+  const rows = query(
+    `SELECT
+       COALESCE(SUM(calories),0) as calories,
+       COALESCE(SUM(protein),0)  as protein,
+       COALESCE(SUM(fat),0)      as fat,
+       COALESCE(SUM(carbs),0)    as carbs
+     FROM calories WHERE date = ?`,
+    [date]
+  )
+  return rows[0] ?? { calories: 0, protein: 0, fat: 0, carbs: 0 }
+}
+
+/**
+ * Кількість днів поспіль з хоча б одним записом харчування.
+ * @returns {Promise<number>}
+ */
+export async function computeStreak() {
+  const rows = query('SELECT DISTINCT date FROM calories ORDER BY date DESC', [])
+  const days = new Set(rows.map(r => r.date))
+  let streak = 0
+  const d = new Date()
   while (true) {
-    const ds = d.toISOString().slice(0, 10);
-    if (daysWithEntries.has(ds)) {
-      streak++;
-      d.setDate(d.getDate() - 1);
+    const ds = d.toISOString().slice(0, 10)
+    if (days.has(ds)) {
+      streak++
+      d.setDate(d.getDate() - 1)
     } else {
-      break;
+      break
     }
   }
-  return streak;
+  return streak
 }
 
-// ─── ES-модульні експорти (для Vite / React) ──────────────────────────────────
-// Також зберігаємо window.LTStorage для сумісності з index.html (vanilla JS)
+// ─── Експорт / Імпорт ────────────────────────────────────────────────────────
 
-if (typeof window !== 'undefined') {
-  window.LTStorage = {
-    saveData, loadData, clearData, exportData, importData,
-    getEntries, addEntry, updateEntry, deleteEntry,
-    getSettings, updateSettings,
-    getHabitDefs, getHabitLog, toggleHabit,
-    getCaloriesByDate, getDayTotals, computeStreak,
-    uid, todayStr,
-  };
+/**
+ * Повний дамп всіх даних у вигляді JSON-об'єкта.
+ * @returns {Promise<object>}
+ */
+async function dumpAll() {
+  const habitDefsRaw = await getHabitDefs()
+  const habitLogRaw  = await getHabitLog()
+  const settings     = await getSettings()
+  return {
+    calories: query('SELECT * FROM calories ORDER BY date ASC', []),
+    weight:   query('SELECT id, date, weight FROM weight_log ORDER BY date ASC', []),
+    tasks:    query('SELECT id, date, title, completed FROM tasks ORDER BY date ASC', [])
+              .map(r => ({ ...r, completed: r.completed === 1 })),
+    notes:    query('SELECT * FROM notes ORDER BY date ASC', []),
+    habits: {
+      defs: habitDefsRaw,
+      log:  habitLogRaw,
+    },
+    settings,
+  }
 }
 
-export {
-  // Базові операції
-  saveData,
-  loadData,
-  clearData,
-  exportData,
-  importData,
+/**
+ * Завантажує файл lifetracker-backup.json через Blob.
+ * @returns {Promise<boolean>}
+ */
+export async function exportData() {
+  try {
+    const data   = await dumpAll()
+    const json   = JSON.stringify(data, null, 2)
+    const blob   = new Blob([json], { type: 'application/json' })
+    const url    = URL.createObjectURL(blob)
+    const anchor = document.createElement('a')
+    anchor.href     = url
+    anchor.download = 'lifetracker-backup.json'
+    document.body.appendChild(anchor)
+    anchor.click()
+    document.body.removeChild(anchor)
+    URL.revokeObjectURL(url)
+    return true
+  } catch (err) {
+    console.error('[Storage] exportData failed:', err)
+    return false
+  }
+}
 
-  // Універсальні CRUD
-  getEntries,
-  addEntry,
-  updateEntry,
-  deleteEntry,
+// Обов'язкові поля файлу резервної копії
+const REQUIRED_FIELDS = ['calories', 'weight', 'tasks', 'notes', 'habits', 'settings']
 
-  // Settings
-  getSettings,
-  updateSettings,
+/**
+ * Імпортує дані з JSON-файлу у SQLite (замінює поточні дані).
+ * @param {File} file
+ * @returns {Promise<{ok:boolean, message:string}>}
+ */
+export async function importData(file) {
+  if (!file || file.type !== 'application/json') {
+    return { ok: false, message: 'Файл повинен бути у форматі JSON (.json).' }
+  }
 
-  // Звички
-  getHabitDefs,
-  getHabitLog,
-  toggleHabit,
+  return new Promise((resolve) => {
+    const reader = new FileReader()
 
-  // Календар / аналітика
-  getCaloriesByDate,
-  getDayTotals,
-  computeStreak,
+    reader.onload = async (e) => {
+      try {
+        const parsed = JSON.parse(e.target.result)
 
-  // Допоміжні
-  uid,
-  todayStr,
-};
+        // Перевірка обов'язкових полів
+        const missing = REQUIRED_FIELDS.filter(f => !(f in parsed))
+        if (missing.length) {
+          return resolve({
+            ok: false,
+            message: `Файл пошкоджений. Відсутні поля: ${missing.join(', ')}.`,
+          })
+        }
+
+        const arrayFields = ['calories', 'weight', 'tasks', 'notes']
+        for (const f of arrayFields) {
+          if (!Array.isArray(parsed[f])) {
+            return resolve({ ok: false, message: `Поле "${f}" повинно бути масивом.` })
+          }
+        }
+
+        if (!Array.isArray(parsed.habits?.defs) || !Array.isArray(parsed.habits?.log)) {
+          return resolve({ ok: false, message: 'habits.defs та habits.log повинні бути масивами.' })
+        }
+
+        if (typeof parsed.settings !== 'object' || typeof parsed.settings.goals !== 'object') {
+          return resolve({ ok: false, message: 'settings.goals повинен бути об\'єктом.' })
+        }
+
+        // Очищаємо поточні дані
+        run('DELETE FROM calories',   [])
+        run('DELETE FROM weight_log', [])
+        run('DELETE FROM tasks',      [])
+        run('DELETE FROM notes',      [])
+        run('DELETE FROM habit_log',  [])
+        run('DELETE FROM habit_defs', [])
+        run('DELETE FROM settings',   [])
+
+        // Вставляємо імпортовані дані
+        for (const e of parsed.calories) {
+          run(
+            `INSERT INTO calories (id,date,name,calories,protein,fat,carbs,photo) VALUES (?,?,?,?,?,?,?,?)`,
+            [e.id??uid(), e.date, e.name??'', Number(e.calories)||0, Number(e.protein)||0,
+             Number(e.fat)||0, Number(e.carbs)||0, e.photo??null]
+          )
+        }
+        for (const e of parsed.weight) {
+          run(
+            `INSERT OR REPLACE INTO weight_log (id,date,weight) VALUES (?,?,?)`,
+            [e.id??uid(), e.date, Number(e.weight)||0]
+          )
+        }
+        for (const e of parsed.tasks) {
+          run(
+            `INSERT INTO tasks (id,date,title,completed) VALUES (?,?,?,?)`,
+            [e.id??uid(), e.date, e.title??'', e.completed?1:0]
+          )
+        }
+        for (const e of parsed.notes) {
+          run(
+            `INSERT INTO notes (id,date,content) VALUES (?,?,?)`,
+            [e.id??uid(), e.date, e.content??'']
+          )
+        }
+        for (const h of parsed.habits.defs) {
+          run(
+            `INSERT INTO habit_defs (id,name,target_per_week) VALUES (?,?,?)`,
+            [h.id??uid(), h.name??'', Number(h.targetPerWeek??h.target_per_week)||3]
+          )
+        }
+        for (const l of parsed.habits.log) {
+          run(
+            `INSERT INTO habit_log (id,date,habit_id) VALUES (?,?,?)`,
+            [uid(), l.date, l.habitId??l.habit_id??'']
+          )
+        }
+
+        const s = parsed.settings
+        run(`INSERT OR REPLACE INTO settings (key,value) VALUES ('theme',?)`,     [s.theme??'dark'])
+        run(`INSERT OR REPLACE INTO settings (key,value) VALUES ('geminiKey',?)`, [s.geminiKey??''])
+        run(
+          `INSERT OR REPLACE INTO settings (key,value) VALUES ('goals',?)`,
+          [typeof s.goals === 'string' ? s.goals : JSON.stringify(s.goals)]
+        )
+
+        resolve({ ok: true, message: 'Дані успішно імпортовано!' })
+      } catch (err) {
+        resolve({ ok: false, message: 'Не вдалося прочитати файл: ' + err.message })
+      }
+    }
+
+    reader.onerror = () => resolve({ ok: false, message: 'Помилка читання файлу.' })
+    reader.readAsText(file)
+  })
+}
+
+/**
+ * Очищає всі дані (скидає до стану після seed).
+ * @returns {Promise<boolean>}
+ */
+export async function clearData() {
+  try {
+    run('DELETE FROM calories',   [])
+    run('DELETE FROM weight_log', [])
+    run('DELETE FROM tasks',      [])
+    run('DELETE FROM notes',      [])
+    run('DELETE FROM habit_log',  [])
+    run('DELETE FROM settings',   [])
+    // Seed дефолтних налаштувань
+    run(`INSERT OR IGNORE INTO settings (key, value) VALUES ('theme',     'dark')`,   [])
+    run(`INSERT OR IGNORE INTO settings (key, value) VALUES ('geminiKey', '')`,       [])
+    run(`INSERT OR IGNORE INTO settings (key, value) VALUES ('goals', ?)`,
+        [JSON.stringify({ calories: 2200, protein: 120, fat: 70, carbs: 250 })])
+    return true
+  } catch (err) {
+    console.error('[Storage] clearData failed:', err)
+    return false
+  }
+}
+
+// ─── Внутрішній helper ────────────────────────────────────────────────────────
+function normalizeRow(collection, row) {
+  if (collection === 'tasks') {
+    return { ...row, completed: row.completed === 1 || row.completed === true }
+  }
+  return row
+}
+
+// ─── saveData / loadData — сумісність (не рекомендовано для прямого використання) ──
+// Залишені як no-op щоб уникнути крашів якщо десь залишились старі виклики
+export const saveData = async () => true
+export const loadData = async () => ({})

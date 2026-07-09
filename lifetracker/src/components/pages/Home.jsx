@@ -124,38 +124,40 @@ function AddNoteModal({ onClose, onAdd }) {
 }
 
 export default function Home() {
-  const [tasks, setTasks] = useState([])
+  const [tasks, setTasks]   = useState([])
   const [totals, setTotals] = useState({ calories: 0 })
-  const [goals, setGoals] = useState({ calories: 2200 })
+  const [goals, setGoals]   = useState({ calories: 2200 })
   const [habits, setHabits] = useState([])
   const [habitLog, setHabitLog] = useState([])
 
   const [showTaskModal, setShowTaskModal] = useState(false)
   const [showNoteModal, setShowNoteModal] = useState(false)
 
-  const reloadData = () => {
+  const reloadData = async () => {
     const today = todayStr()
-    const allTasks = getEntries('tasks', t => t.date === today)
+    const [allTasks, dayTotals, s, habitDefs, hLog] = await Promise.all([
+      getEntries('tasks', t => t.date === today),
+      getDayTotals(today),
+      getSettings(),
+      getHabitDefs(),
+      getHabitLog(today),
+    ])
     setTasks(allTasks)
-    setTotals(getDayTotals(today))
-    const s = getSettings()
+    setTotals(dayTotals)
     if (s?.goals) setGoals(s.goals)
-    
-    setHabits(getHabitDefs())
-    setHabitLog(getHabitLog(today).filter(l => l.date === today))
+    setHabits(habitDefs)
+    setHabitLog(hLog.filter(l => l.date === today))
   }
 
-  useEffect(() => {
-    reloadData()
-  }, [])
+  useEffect(() => { reloadData() }, [])  // eslint-disable-line react-hooks/exhaustive-deps
 
-  const handleToggleHabit = (habitId, done) => {
-    toggleHabit(habitId, done)
+  const handleToggleHabit = async (habitId, done) => {
+    await toggleHabit(habitId, done)
     reloadData()
   }
 
-  const completedTasks = tasks.filter(t => t.completed).length
-  const totalTasks = tasks.length
+  const completedTasks    = tasks.filter(t => t.completed).length
+  const totalTasks        = tasks.length
   const remainingCalories = Math.max(0, goals.calories - totals.calories)
 
   return (
@@ -167,7 +169,7 @@ export default function Home() {
     >
       <div
         className="max-w-[1200px] mx-auto px-4 sm:px-6 py-8 space-y-10"
-        style={{ paddingBottom: 'calc(6rem + 24px)' }} // Bottom nav padding
+        style={{ paddingBottom: 'calc(6rem + 24px)' }}
       >
         {/* Greeting */}
         <header className="anim-down">
@@ -185,38 +187,10 @@ export default function Home() {
             Today's Overview
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-            <OverviewCard
-              title="Completed Tasks"
-              value={`${completedTasks} / ${totalTasks}`}
-              subtext={`${totalTasks - completedTasks} tasks remaining`}
-              Icon={CheckCircle2}
-              gradientClass="bg-gradient-to-br from-violet-500 to-indigo-600"
-              delay="anim-delay-1"
-            />
-            <OverviewCard
-              title="Calories"
-              value={totals.calories.toLocaleString()}
-              subtext={`${remainingCalories.toLocaleString()} kcal remaining`}
-              Icon={Flame}
-              gradientClass="bg-gradient-to-br from-orange-400 to-pink-500"
-              delay="anim-delay-2"
-            />
-            <OverviewCard
-              title="Water"
-              value="1.5 L"
-              subtext="Goal: 2.5 L"
-              Icon={Droplet}
-              gradientClass="bg-gradient-to-br from-sky-400 to-blue-600"
-              delay="anim-delay-3"
-            />
-            <OverviewCard
-              title="Mood"
-              value="Great"
-              subtext="Feeling energized"
-              Icon={Smile}
-              gradientClass="bg-gradient-to-br from-emerald-400 to-teal-500"
-              delay="anim-delay-4"
-            />
+            <OverviewCard title="Completed Tasks" value={`${completedTasks} / ${totalTasks}`} subtext={`${totalTasks - completedTasks} tasks remaining`} Icon={CheckCircle2} gradientClass="bg-gradient-to-br from-violet-500 to-indigo-600" delay="anim-delay-1" />
+            <OverviewCard title="Calories" value={totals.calories.toLocaleString()} subtext={`${remainingCalories.toLocaleString()} kcal remaining`} Icon={Flame} gradientClass="bg-gradient-to-br from-orange-400 to-pink-500" delay="anim-delay-2" />
+            <OverviewCard title="Water" value="1.5 L" subtext="Goal: 2.5 L" Icon={Droplet} gradientClass="bg-gradient-to-br from-sky-400 to-blue-600" delay="anim-delay-3" />
+            <OverviewCard title="Mood" value="Great" subtext="Feeling energized" Icon={Smile} gradientClass="bg-gradient-to-br from-emerald-400 to-teal-500" delay="anim-delay-4" />
           </div>
         </section>
 
@@ -226,27 +200,9 @@ export default function Home() {
             Quick Actions
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <QuickActionButton
-              label="Add Task"
-              Icon={Plus}
-              colorClass="text-violet-400"
-              delay="anim-delay-2"
-              onClick={() => setShowTaskModal(true)}
-            />
-            <QuickActionButton
-              label="Add Meal"
-              Icon={Utensils}
-              colorClass="text-orange-400"
-              delay="anim-delay-3"
-              onClick={() => { window.location.href = '/calories' }} // Simple redirect instead of duplicating modal
-            />
-            <QuickActionButton
-              label="Add Note"
-              Icon={FileText}
-              colorClass="text-sky-400"
-              delay="anim-delay-4"
-              onClick={() => setShowNoteModal(true)}
-            />
+            <QuickActionButton label="Add Task"  Icon={Plus}     colorClass="text-violet-400" delay="anim-delay-2" onClick={() => setShowTaskModal(true)} />
+            <QuickActionButton label="Add Meal"  Icon={Utensils} colorClass="text-orange-400" delay="anim-delay-3" onClick={() => { window.location.href = '/calories' }} />
+            <QuickActionButton label="Add Note"  Icon={FileText} colorClass="text-sky-400"    delay="anim-delay-4" onClick={() => setShowNoteModal(true)} />
           </div>
         </section>
 
@@ -259,7 +215,7 @@ export default function Home() {
             {habits.length > 0 ? (
               <div className="divide-y" style={{ borderColor: 'var(--border)' }}>
                 {habits.map(habit => {
-                  const isDone = habitLog.some(l => l.habitId === habit.id && l.done)
+                  const isDone = habitLog.some(l => l.habitId === habit.id)
                   return (
                     <label key={habit.id} className="flex items-center justify-between p-4 transition-colors cursor-pointer hover:bg-white/[0.03] group">
                       <div className="flex items-center gap-4">
@@ -280,42 +236,21 @@ export default function Home() {
               </div>
             ) : (
               <div className="p-6 text-center text-[14px]" style={{ color: 'var(--t-3)' }}>
-                No habits defined. Add them in Settings or via Storage directly.
+                No habits defined yet.
               </div>
             )}
           </div>
         </section>
 
-        {/* Today's Activity */}
+        {/* Recent Activities */}
         <section aria-labelledby="activity-heading">
           <h2 id="activity-heading" className="text-[14px] font-bold uppercase tracking-[0.12em] mb-4" style={{ color: 'var(--t-3)' }}>
             Recent Activities
           </h2>
           <div className="space-y-3">
-            <ActivityCard
-              title="Morning Run"
-              description="5.2 km · 342 kcal burned"
-              time="09:14 AM"
-              Icon={Activity}
-              colorClass="text-violet-400"
-              delay="anim-delay-3"
-            />
-            <ActivityCard
-              title="Healthy Lunch"
-              description="Chicken salad · 480 kcal"
-              time="12:30 PM"
-              Icon={Heart}
-              colorClass="text-pink-400"
-              delay="anim-delay-4"
-            />
-            <ActivityCard
-              title="Deep Work Session"
-              description="Completed 2 tasks"
-              time="02:15 PM"
-              Icon={Zap}
-              colorClass="text-amber-400"
-              delay="anim-delay-5"
-            />
+            <ActivityCard title="Morning Run"         description="5.2 km · 342 kcal burned" time="09:14 AM" Icon={Activity} colorClass="text-violet-400" delay="anim-delay-3" />
+            <ActivityCard title="Healthy Lunch"       description="Chicken salad · 480 kcal" time="12:30 PM" Icon={Heart}    colorClass="text-pink-400"   delay="anim-delay-4" />
+            <ActivityCard title="Deep Work Session"   description="Completed 2 tasks"         time="02:15 PM" Icon={Zap}      colorClass="text-amber-400"  delay="anim-delay-5" />
           </div>
         </section>
 
@@ -324,8 +259,8 @@ export default function Home() {
       {showTaskModal && (
         <AddTaskModal
           onClose={() => setShowTaskModal(false)}
-          onAdd={(title) => {
-            addEntry('tasks', { title, completed: false })
+          onAdd={async (title) => {
+            await addEntry('tasks', { title, completed: false })
             setShowTaskModal(false)
             reloadData()
           }}
@@ -335,14 +270,13 @@ export default function Home() {
       {showNoteModal && (
         <AddNoteModal
           onClose={() => setShowNoteModal(false)}
-          onAdd={(content) => {
-            addEntry('notes', { content })
+          onAdd={async (content) => {
+            await addEntry('notes', { content })
             setShowNoteModal(false)
             reloadData()
           }}
         />
       )}
-
     </main>
   )
 }

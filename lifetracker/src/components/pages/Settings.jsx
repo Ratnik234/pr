@@ -79,20 +79,15 @@ export default function SettingsPage() {
   const importRef = useRef(null)
   const [status, setStatus] = useState({ message: '', type: 'ok' })
   const [theme, setTheme] = useState('dark')
-  
-  const [goals, setGoals] = useState({
-    calories: 2200,
-    protein: 120,
-    fat: 70,
-    carbs: 250
-  })
+  const [goals, setGoals] = useState({ calories: 2200, protein: 120, fat: 70, carbs: 250 })
 
   useEffect(() => {
-    const s = getSettings()
-    if (s) {
-      if (s.theme) setTheme(s.theme)
-      if (s.goals) setGoals(s.goals)
-    }
+    getSettings().then(s => {
+      if (s) {
+        if (s.theme) setTheme(s.theme)
+        if (s.goals) setGoals(s.goals)
+      }
+    })
   }, [])
 
   function showStatus(message, type = 'ok') {
@@ -101,10 +96,10 @@ export default function SettingsPage() {
   }
 
   // ─── Handlers ──────────────────────────────────────────────────────────────
-  
-  function handleThemeChange(newTheme) {
+
+  async function handleThemeChange(newTheme) {
     setTheme(newTheme)
-    updateSettings({ theme: newTheme })
+    await updateSettings({ theme: newTheme })
     if (newTheme === 'light') {
       document.documentElement.classList.add('theme-light')
     } else {
@@ -112,15 +107,15 @@ export default function SettingsPage() {
     }
   }
 
-  function handleGoalChange(field, value) {
+  async function handleGoalChange(field, value) {
     const val = parseInt(value, 10) || 0
     const newGoals = { ...goals, [field]: val }
     setGoals(newGoals)
-    updateSettings({ goals: newGoals })
+    await updateSettings({ goals: newGoals })
   }
 
-  function handleExport() {
-    const ok = exportData()
+  async function handleExport() {
+    const ok = await exportData()
     showStatus(
       ok ? 'Файл lifetracker-backup.json завантажено!' : 'Помилка при експорті.',
       ok ? 'ok' : 'err'
@@ -139,17 +134,16 @@ export default function SettingsPage() {
     const result = await importData(file)
     showStatus(result.message, result.ok ? 'ok' : 'err')
     if (result.ok) {
-      // Reload settings to reflect imported state
-      const s = getSettings()
+      const s = await getSettings()
       if (s.theme) handleThemeChange(s.theme)
       if (s.goals) setGoals(s.goals)
     }
   }
 
-  function handleReset() {
+  async function handleReset() {
     if (!confirm('Видалити ВСІ дані LifeTracker? Цю дію неможливо скасувати.')) return
-    clearData()
-    const s = getSettings()
+    await clearData()
+    const s = await getSettings()
     if (s.theme) handleThemeChange(s.theme)
     if (s.goals) setGoals(s.goals)
     showStatus('Дані повністю очищено.', 'ok')
@@ -182,8 +176,8 @@ export default function SettingsPage() {
                   onClick={() => handleThemeChange('dark')}
                   className={clsx(
                     "flex items-center gap-1.5 px-3 py-1.5 rounded-md transition-all text-[12px] font-medium border",
-                    theme === 'dark' 
-                      ? "bg-white/10 shadow-sm border-white/10" 
+                    theme === 'dark'
+                      ? "bg-white/10 shadow-sm border-white/10"
                       : "text-gray-400 hover:text-white border-transparent"
                   )}
                   style={theme === 'dark' ? { color: 'var(--t-1)' } : {}}
@@ -194,8 +188,8 @@ export default function SettingsPage() {
                   onClick={() => handleThemeChange('light')}
                   className={clsx(
                     "flex items-center gap-1.5 px-3 py-1.5 rounded-md transition-all text-[12px] font-medium border",
-                    theme === 'light' 
-                      ? "bg-white/10 shadow-sm border-white/10" 
+                    theme === 'light'
+                      ? "bg-white/10 shadow-sm border-white/10"
                       : "text-gray-400 hover:text-white border-transparent"
                   )}
                   style={theme === 'light' ? { color: 'var(--t-1)' } : {}}
@@ -211,46 +205,23 @@ export default function SettingsPage() {
         <SettingsSection title="Nutrition Goals" icon={Activity} colorClass="text-amber-400">
           <div className="p-4 sm:px-5">
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-              <div>
-                <label className="block text-[12px] font-medium mb-1.5" style={{ color: 'var(--t-2)' }}>Calories (kcal)</label>
-                <input
-                  type="number"
-                  value={goals.calories}
-                  onChange={(e) => handleGoalChange('calories', e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg text-sm transition-colors focus:outline-none focus:border-indigo-500"
-                  style={{ background: 'var(--bg-raised)', border: '1px solid var(--border)', color: 'var(--t-1)' }}
-                />
-              </div>
-              <div>
-                <label className="block text-[12px] font-medium mb-1.5" style={{ color: 'var(--t-2)' }}>Protein (g)</label>
-                <input
-                  type="number"
-                  value={goals.protein}
-                  onChange={(e) => handleGoalChange('protein', e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg text-sm transition-colors focus:outline-none focus:border-indigo-500"
-                  style={{ background: 'var(--bg-raised)', border: '1px solid var(--border)', color: 'var(--t-1)' }}
-                />
-              </div>
-              <div>
-                <label className="block text-[12px] font-medium mb-1.5" style={{ color: 'var(--t-2)' }}>Fat (g)</label>
-                <input
-                  type="number"
-                  value={goals.fat}
-                  onChange={(e) => handleGoalChange('fat', e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg text-sm transition-colors focus:outline-none focus:border-indigo-500"
-                  style={{ background: 'var(--bg-raised)', border: '1px solid var(--border)', color: 'var(--t-1)' }}
-                />
-              </div>
-              <div>
-                <label className="block text-[12px] font-medium mb-1.5" style={{ color: 'var(--t-2)' }}>Carbs (g)</label>
-                <input
-                  type="number"
-                  value={goals.carbs}
-                  onChange={(e) => handleGoalChange('carbs', e.target.value)}
-                  className="w-full px-3 py-2 rounded-lg text-sm transition-colors focus:outline-none focus:border-indigo-500"
-                  style={{ background: 'var(--bg-raised)', border: '1px solid var(--border)', color: 'var(--t-1)' }}
-                />
-              </div>
+              {[
+                { field: 'calories', label: 'Calories (kcal)' },
+                { field: 'protein',  label: 'Protein (g)' },
+                { field: 'fat',      label: 'Fat (g)' },
+                { field: 'carbs',    label: 'Carbs (g)' },
+              ].map(({ field, label }) => (
+                <div key={field}>
+                  <label className="block text-[12px] font-medium mb-1.5" style={{ color: 'var(--t-2)' }}>{label}</label>
+                  <input
+                    type="number"
+                    value={goals[field]}
+                    onChange={(e) => handleGoalChange(field, e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg text-sm transition-colors focus:outline-none focus:border-indigo-500"
+                    style={{ background: 'var(--bg-raised)', border: '1px solid var(--border)', color: 'var(--t-1)' }}
+                  />
+                </div>
+              ))}
             </div>
           </div>
         </SettingsSection>
@@ -298,10 +269,10 @@ export default function SettingsPage() {
             </div>
             <div>
               <p className="text-xl font-bold tracking-tight" style={{ color: 'var(--t-1)' }}>LifeTracker</p>
-              <p className="text-sm mt-1 font-medium" style={{ color: 'var(--t-3)' }}>Version 1.0.0</p>
+              <p className="text-sm mt-1 font-medium" style={{ color: 'var(--t-3)' }}>Version 1.0.0 · SQLite</p>
             </div>
             <p className="text-[13px] max-w-sm mt-2 leading-relaxed" style={{ color: 'var(--t-2)' }}>
-              Designed with care to help you track your daily wellness, habits, and productivity. Your data stays entirely on your device.
+              Designed with care to help you track your daily wellness, habits, and productivity. Your data stays entirely on your device via SQLite (WebAssembly).
             </p>
           </div>
         </SettingsSection>
