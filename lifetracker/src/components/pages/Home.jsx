@@ -1,4 +1,6 @@
-import { CheckCircle2, Flame, Droplet, Smile, Plus, Utensils, FileText, Activity, Heart, Zap } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { CheckCircle2, Flame, Droplet, Smile, Plus, Utensils, FileText, Activity, Heart, Zap, X } from 'lucide-react'
+import { getEntries, getDayTotals, getSettings, todayStr, addEntry, getHabitDefs, getHabitLog, toggleHabit } from '../../utils/storage'
 
 // Helper for classes
 function clsx(...args) { return args.filter(Boolean).join(' ') }
@@ -26,9 +28,9 @@ function OverviewCard({ title, value, subtext, Icon, gradientClass, delay }) {
   )
 }
 
-function QuickActionButton({ label, Icon, colorClass, delay }) {
+function QuickActionButton({ label, Icon, colorClass, delay, onClick }) {
   return (
-    <button className={clsx("flex items-center gap-3 p-4 rounded-[16px] transition-all duration-300 hover:-translate-y-1 hover:shadow-lg anim-up", delay)} style={{ background: 'var(--bg-hover)', border: '1px solid var(--border)' }}>
+    <button onClick={onClick} className={clsx("flex items-center gap-3 p-4 rounded-[16px] transition-all duration-300 hover:-translate-y-1 hover:shadow-lg anim-up w-full text-left", delay)} style={{ background: 'var(--bg-hover)', border: '1px solid var(--border)' }}>
       <div className={clsx("w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0", colorClass)} style={{ background: 'var(--bg-card)' }}>
         <Icon size={20} />
       </div>
@@ -54,7 +56,108 @@ function ActivityCard({ title, time, description, Icon, colorClass, delay }) {
   )
 }
 
+// ─── Simple Modals ────────────────────────────────────────────────────────────
+function AddTaskModal({ onClose, onAdd }) {
+  const [title, setTitle] = useState('')
+  const handleSubmit = (e) => {
+    e.preventDefault()
+    if (!title.trim()) return
+    onAdd(title)
+  }
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm anim-up">
+      <div className="w-full max-w-sm p-6 rounded-[24px] shadow-2xl glass-card relative" style={{ background: 'var(--bg-panel)' }}>
+        <button onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors">
+          <X size={20} />
+        </button>
+        <h2 className="text-xl font-bold mb-6" style={{ color: 'var(--t-1)' }}>Add New Task</h2>
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          <input
+            type="text"
+            placeholder="Task title"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            className="w-full px-4 py-3 rounded-xl text-[15px] transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+            style={{ background: 'var(--bg-raised)', border: '1px solid var(--border)', color: 'var(--t-1)' }}
+            autoFocus
+          />
+          <button type="submit" className="btn-primary w-full py-3 rounded-xl mt-2 text-[15px]">
+            Add Task
+          </button>
+        </form>
+      </div>
+    </div>
+  )
+}
+
+function AddNoteModal({ onClose, onAdd }) {
+  const [content, setContent] = useState('')
+  const handleSubmit = (e) => {
+    e.preventDefault()
+    if (!content.trim()) return
+    onAdd(content)
+  }
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm anim-up">
+      <div className="w-full max-w-sm p-6 rounded-[24px] shadow-2xl glass-card relative" style={{ background: 'var(--bg-panel)' }}>
+        <button onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors">
+          <X size={20} />
+        </button>
+        <h2 className="text-xl font-bold mb-6" style={{ color: 'var(--t-1)' }}>Add New Note</h2>
+        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+          <textarea
+            placeholder="Write your note here..."
+            value={content}
+            onChange={(e) => setContent(e.target.value)}
+            rows={4}
+            className="w-full px-4 py-3 rounded-xl text-[15px] transition-colors focus:outline-none focus:ring-2 focus:ring-sky-500/50 resize-none"
+            style={{ background: 'var(--bg-raised)', border: '1px solid var(--border)', color: 'var(--t-1)' }}
+            autoFocus
+          />
+          <button type="submit" className="btn-primary w-full py-3 rounded-xl mt-2 text-[15px]" style={{ background: 'linear-gradient(135deg, var(--sky), #38bdf8)' }}>
+            Save Note
+          </button>
+        </form>
+      </div>
+    </div>
+  )
+}
+
 export default function Home() {
+  const [tasks, setTasks] = useState([])
+  const [totals, setTotals] = useState({ calories: 0 })
+  const [goals, setGoals] = useState({ calories: 2200 })
+  const [habits, setHabits] = useState([])
+  const [habitLog, setHabitLog] = useState([])
+
+  const [showTaskModal, setShowTaskModal] = useState(false)
+  const [showNoteModal, setShowNoteModal] = useState(false)
+
+  const reloadData = () => {
+    const today = todayStr()
+    const allTasks = getEntries('tasks', t => t.date === today)
+    setTasks(allTasks)
+    setTotals(getDayTotals(today))
+    const s = getSettings()
+    if (s?.goals) setGoals(s.goals)
+    
+    setHabits(getHabitDefs())
+    setHabitLog(getHabitLog(today).filter(l => l.date === today))
+  }
+
+  useEffect(() => {
+    reloadData()
+  }, [])
+
+  const handleToggleHabit = (habitId, done) => {
+    toggleHabit(habitId, done)
+    reloadData()
+  }
+
+  const completedTasks = tasks.filter(t => t.completed).length
+  const totalTasks = tasks.length
+  const remainingCalories = Math.max(0, goals.calories - totals.calories)
+
   return (
     <main
       id="main-content"
@@ -84,16 +187,16 @@ export default function Home() {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
             <OverviewCard
               title="Completed Tasks"
-              value="5 / 8"
-              subtext="3 tasks remaining"
+              value={`${completedTasks} / ${totalTasks}`}
+              subtext={`${totalTasks - completedTasks} tasks remaining`}
               Icon={CheckCircle2}
               gradientClass="bg-gradient-to-br from-violet-500 to-indigo-600"
               delay="anim-delay-1"
             />
             <OverviewCard
               title="Calories"
-              value="1,648"
-              subtext="552 kcal remaining"
+              value={totals.calories.toLocaleString()}
+              subtext={`${remainingCalories.toLocaleString()} kcal remaining`}
               Icon={Flame}
               gradientClass="bg-gradient-to-br from-orange-400 to-pink-500"
               delay="anim-delay-2"
@@ -128,26 +231,65 @@ export default function Home() {
               Icon={Plus}
               colorClass="text-violet-400"
               delay="anim-delay-2"
+              onClick={() => setShowTaskModal(true)}
             />
             <QuickActionButton
               label="Add Meal"
               Icon={Utensils}
               colorClass="text-orange-400"
               delay="anim-delay-3"
+              onClick={() => { window.location.href = '/calories' }} // Simple redirect instead of duplicating modal
             />
             <QuickActionButton
               label="Add Note"
               Icon={FileText}
               colorClass="text-sky-400"
               delay="anim-delay-4"
+              onClick={() => setShowNoteModal(true)}
             />
+          </div>
+        </section>
+
+        {/* Habit Tracker */}
+        <section aria-labelledby="habits-heading">
+          <h2 id="habits-heading" className="text-[14px] font-bold uppercase tracking-[0.12em] mb-4" style={{ color: 'var(--t-3)' }}>
+            Habits Tracker
+          </h2>
+          <div className="glass-card p-2 anim-up anim-delay-5">
+            {habits.length > 0 ? (
+              <div className="divide-y" style={{ borderColor: 'var(--border)' }}>
+                {habits.map(habit => {
+                  const isDone = habitLog.some(l => l.habitId === habit.id && l.done)
+                  return (
+                    <label key={habit.id} className="flex items-center justify-between p-4 transition-colors cursor-pointer hover:bg-white/[0.03] group">
+                      <div className="flex items-center gap-4">
+                        <input
+                          type="checkbox"
+                          checked={isDone}
+                          onChange={(e) => handleToggleHabit(habit.id, e.target.checked)}
+                          className="w-5 h-5 rounded text-indigo-500 focus:ring-indigo-500 bg-black/20 border-white/20"
+                        />
+                        <span className={clsx("text-[15px] transition-colors", isDone ? "text-gray-400 line-through" : "text-gray-200 group-hover:text-white")}>
+                          {habit.name}
+                        </span>
+                      </div>
+                      <span className="text-[12px] font-mono" style={{ color: 'var(--t-3)' }}>Target: {habit.targetPerWeek}/week</span>
+                    </label>
+                  )
+                })}
+              </div>
+            ) : (
+              <div className="p-6 text-center text-[14px]" style={{ color: 'var(--t-3)' }}>
+                No habits defined. Add them in Settings or via Storage directly.
+              </div>
+            )}
           </div>
         </section>
 
         {/* Today's Activity */}
         <section aria-labelledby="activity-heading">
           <h2 id="activity-heading" className="text-[14px] font-bold uppercase tracking-[0.12em] mb-4" style={{ color: 'var(--t-3)' }}>
-            Today's Activity
+            Recent Activities
           </h2>
           <div className="space-y-3">
             <ActivityCard
@@ -178,6 +320,29 @@ export default function Home() {
         </section>
 
       </div>
+
+      {showTaskModal && (
+        <AddTaskModal
+          onClose={() => setShowTaskModal(false)}
+          onAdd={(title) => {
+            addEntry('tasks', { title, completed: false })
+            setShowTaskModal(false)
+            reloadData()
+          }}
+        />
+      )}
+
+      {showNoteModal && (
+        <AddNoteModal
+          onClose={() => setShowNoteModal(false)}
+          onAdd={(content) => {
+            addEntry('notes', { content })
+            setShowNoteModal(false)
+            reloadData()
+          }}
+        />
+      )}
+
     </main>
   )
 }

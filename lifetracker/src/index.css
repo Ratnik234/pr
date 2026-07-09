@@ -205,3 +205,42 @@ body {
   outline-offset: 2px;
   border-radius: 6px;
 }
+
+/* ─── Light Theme Overrides ──────────────────────────────────── */
+html.theme-light {
+  --bg-root:    #f8f9fa;
+  --bg-panel:   #ffffff;
+  --bg-card:    #ffffff;
+  --bg-raised:  #f1f5f9;
+  --bg-hover:   rgba(0,0,0,0.04);
+  
+  --t-1: #0f172a;
+  --t-2: #475569;
+  --t-3: #64748b;
+  
+  --border: rgba(0,0,0,0.1);
+  --border-hover: rgba(0,0,0,0.15);
+  
+  --shadow-card:  0 4px 24px rgba(0,0,0,0.06);
+}
+
+html.theme-light body {
+  color-scheme: light;
+}
+
+html.theme-light .glass {
+  background: rgba(255,255,255,0.75);
+}
+
+html.theme-light .glass-card {
+  background: rgba(255,255,255,0.85);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+}
+
+html.theme-light .mesh-bg {
+  background:
+    radial-gradient(ellipse 70% 50% at 10% 5%,  rgba(124,58,237,0.08) 0%, transparent 65%),
+    radial-gradient(ellipse 55% 60% at 90% 85%,  rgba(99,102,241,0.05) 0%, transparent 65%),
+    radial-gradient(ellipse 40% 35% at 55% 50%,  rgba(236,72,153,0.03) 0%, transparent 55%),
+    var(--bg-root);
+}

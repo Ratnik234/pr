@@ -22,9 +22,9 @@
  *   ...решта полів залежно від типу запису
  */
 
-"use strict";
 
 // ─── Константи ───────────────────────────────────────────────────────────────
+
 
 const STORAGE_KEY = "lifetracker_data";
 
@@ -428,9 +428,21 @@ function computeStreak() {
   return streak;
 }
 
-// ─── Публічне API ─────────────────────────────────────────────────────────────
+// ─── ES-модульні експорти (для Vite / React) ──────────────────────────────────
+// Також зберігаємо window.LTStorage для сумісності з index.html (vanilla JS)
 
-window.LTStorage = {
+if (typeof window !== 'undefined') {
+  window.LTStorage = {
+    saveData, loadData, clearData, exportData, importData,
+    getEntries, addEntry, updateEntry, deleteEntry,
+    getSettings, updateSettings,
+    getHabitDefs, getHabitLog, toggleHabit,
+    getCaloriesByDate, getDayTotals, computeStreak,
+    uid, todayStr,
+  };
+}
+
+export {
   // Базові операції
   saveData,
   loadData,
@@ -460,5 +472,5 @@ window.LTStorage = {
 
   // Допоміжні
   uid,
-  todayStr
+  todayStr,
 };
