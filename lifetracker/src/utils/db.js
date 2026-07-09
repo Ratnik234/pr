@@ -97,11 +97,13 @@ const SCHEMA_SQL = `
   );
 
   CREATE TABLE IF NOT EXISTS tasks (
-    id        TEXT PRIMARY KEY,
-    date      TEXT NOT NULL,
-    title     TEXT NOT NULL,
-    completed INTEGER DEFAULT 0,
-    user_id   TEXT
+    id         TEXT PRIMARY KEY,
+    date       TEXT NOT NULL,
+    start_time TEXT,
+    end_time   TEXT,
+    title      TEXT NOT NULL,
+    completed  INTEGER DEFAULT 0,
+    user_id    TEXT
   );
 
   CREATE TABLE IF NOT EXISTS notes (
@@ -228,6 +230,15 @@ function applyMigrations(db) {
             user_id  TEXT
           )
         `)
+      }
+    }
+    
+    if (table === 'tasks') {
+      if (!columns.includes('start_time')) {
+        db.run(`ALTER TABLE tasks ADD COLUMN start_time TEXT`)
+      }
+      if (!columns.includes('end_time')) {
+        db.run(`ALTER TABLE tasks ADD COLUMN end_time TEXT`)
       }
     }
   }

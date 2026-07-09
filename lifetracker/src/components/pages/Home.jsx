@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { CheckCircle2, Flame, Droplet, Smile, Plus, Utensils, FileText, Activity, Heart, Zap, X } from 'lucide-react'
-import { getEntries, getDayTotals, getSettings, todayStr, addEntry, getHabitDefs, getHabitLog, toggleHabit } from '../../utils/storage'
+import { getEntries, getDayTotals, getSettings, todayStr, addEntry, getActivityLog, getWorkouts, getCurrentUserInfo } from '../../utils/storage'
 
 // Helper for classes
 function clsx(...args) { return args.filter(Boolean).join(' ') }
@@ -129,32 +129,47 @@ export default function Home() {
   const [goals, setGoals]   = useState({ calories: 2200 })
   const [habits, setHabits] = useState([])
   const [habitLog, setHabitLog] = useState([])
+  const [activity, setActivity] = useState({ steps: 0, distance: 0, caloriesBurned: 0 })
+  const [username, setUsername] = useState('User')
+  const [motionSupported, setMotionSupported] = useState(true)
+
+  useEffect(() => {
+    // Check if device motion/pedometer is available.
+    // Since Web API for pedometer doesn't exist natively for standard browsers without flags,
+    // we will attempt a graceful check or just show it's unavailable on desktop.
+    if (typeof window !== 'undefined' && !window.DeviceMotionEvent) {
+      setMotionSupported(false)
+    }
+  }, [])
 
   const [showTaskModal, setShowTaskModal] = useState(false)
   const [showNoteModal, setShowNoteModal] = useState(false)
 
   const reloadData = async () => {
     const today = todayStr()
-    const [allTasks, dayTotals, s, habitDefs, hLog] = await Promise.all([
+    const [allTasks, dayTotals, s, user, act, works] = await Promise.all([
       getEntries('tasks', t => t.date === today),
       getDayTotals(today),
       getSettings(),
-      getHabitDefs(),
-      getHabitLog(today),
+      getCurrentUserInfo(),
+      getActivityLog(today),
+      getWorkouts(today)
     ])
     setTasks(allTasks)
     setTotals(dayTotals)
     if (s?.goals) setGoals(s.goals)
-    setHabits(habitDefs)
-    setHabitLog(hLog.filter(l => l.date === today))
+    if (user?.username) setUsername(user.username)
+    
+    // Sum workout calories
+    const calsBurned = works.filter(w => w.date === today).reduce((sum, w) => sum + (w.calories_burned || 0), 0)
+    setActivity({
+      steps: act?.steps || 0,
+      distance: act?.distance || 0,
+      caloriesBurned: calsBurned
+    })
   }
 
   useEffect(() => { reloadData() }, [])  // eslint-disable-line react-hooks/exhaustive-deps
-
-  const handleToggleHabit = async (habitId, done) => {
-    await toggleHabit(habitId, done)
-    reloadData()
-  }
 
   const completedTasks    = tasks.filter(t => t.completed).length
   const totalTasks        = tasks.length
@@ -174,7 +189,7 @@ export default function Home() {
         {/* Greeting */}
         <header className="anim-down">
           <h1 className="text-3xl sm:text-4xl font-bold tracking-tight mb-2" style={{ color: 'var(--t-1)' }}>
-            Good morning, Alex 👋
+            Good morning, {username} 👋
           </h1>
           <p className="text-[15px]" style={{ color: 'var(--t-2)' }}>
             Let's make today a great day. Here is your overview.
@@ -211,34 +226,26 @@ export default function Home() {
           <h2 id="habits-heading" className="text-[14px] font-bold uppercase tracking-[0.12em] mb-4" style={{ color: 'var(--t-3)' }}>
             Habits Tracker
           </h2>
-          <div className="glass-card p-2 anim-up anim-delay-5">
-            {habits.length > 0 ? (
-              <div className="divide-y" style={{ borderColor: 'var(--border)' }}>
-                {habits.map(habit => {
-                  const isDone = habitLog.some(l => l.habitId === habit.id)
-                  return (
-                    <label key={habit.id} className="flex items-center justify-between p-4 transition-colors cursor-pointer hover:bg-white/[0.03] group">
-                      <div className="flex items-center gap-4">
-                        <input
-                          type="checkbox"
-                          checked={isDone}
-                          onChange={(e) => handleToggleHabit(habit.id, e.target.checked)}
-                          className="w-5 h-5 rounded text-indigo-500 focus:ring-indigo-500 bg-black/20 border-white/20"
-                        />
-                        <span className={clsx("text-[15px] transition-colors", isDone ? "text-gray-400 line-through" : "text-gray-200 group-hover:text-white")}>
-                          {habit.name}
-                        </span>
-                      </div>
-                      <span className="text-[12px] font-mono" style={{ color: 'var(--t-3)' }}>Target: {habit.targetPerWeek}/week</span>
-                    </label>
-                  )
-                })}
-              </div>
-            ) : (
-              <div className="p-6 text-center text-[14px]" style={{ color: 'var(--t-3)' }}>
-                No habits defined yet.
+          <div className="glass-card p-4 anim-up anim-delay-5">
+            {!motionSupported && (
+              <div className="mb-4 p-3 rounded-xl text-[13px] border border-amber-500/20 bg-amber-500/10 text-amber-400">
+                Автоматическое получение данных недоступно
               </div>
             )}
+            <div className="grid grid-cols-3 gap-4 text-center">
+              <div>
+                <p className="text-[20px] font-bold" style={{ color: 'var(--t-1)' }}>{activity.steps.toLocaleString()}</p>
+                <p className="text-[11px] font-bold uppercase tracking-wider" style={{ color: 'var(--t-3)' }}>Steps</p>
+              </div>
+              <div>
+                <p className="text-[20px] font-bold" style={{ color: 'var(--t-1)' }}>{activity.distance} km</p>
+                <p className="text-[11px] font-bold uppercase tracking-wider" style={{ color: 'var(--t-3)' }}>Distance</p>
+              </div>
+              <div>
+                <p className="text-[20px] font-bold" style={{ color: 'var(--orange)' }}>{activity.caloriesBurned}</p>
+                <p className="text-[11px] font-bold uppercase tracking-wider" style={{ color: 'var(--t-3)' }}>Kcal Burned</p>
+              </div>
+            </div>
           </div>
         </section>
 

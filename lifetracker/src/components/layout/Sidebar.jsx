@@ -1,5 +1,7 @@
-import { NavLink } from 'react-router-dom'
+import { NavLink, useNavigate } from 'react-router-dom'
 import { Home, Calendar, Apple, BarChart2, Settings, X, Activity, Plus } from 'lucide-react'
+import { getCurrentUserInfo } from '../../utils/storage'
+import { useState, useEffect } from 'react'
 
 const NAV = [
   { id: 'home',       path: '/',           label: 'Home',       Icon: Home,      badge: null,  dot: false },
@@ -133,7 +135,8 @@ function ScoreCard() {
 }
 
 // ─── User Profile Footer ──────────────────────────────────────────────────────
-function ProfileFooter() {
+function ProfileFooter({ username }) {
+  const initial = username ? username.substring(0, 2).toUpperCase() : 'LT'
   const handleLogout = () => {
     localStorage.removeItem('lifetracker_session')
     window.location.reload()
@@ -151,10 +154,10 @@ function ProfileFooter() {
           className="w-9 h-9 rounded-[12px] flex items-center justify-center flex-shrink-0"
           style={{ background: 'linear-gradient(135deg,#7c3aed,#ec4899)' }}
         >
-          <span className="text-sm font-bold text-white">LT</span>
+          <span className="text-sm font-bold text-white">{initial}</span>
         </div>
         <div className="min-w-0 flex-1 group-hover:hidden">
-          <p className="text-sm font-semibold truncate" style={{ color: 'var(--t-1)' }}>My Account</p>
+          <p className="text-sm font-semibold truncate" style={{ color: 'var(--t-1)' }}>{username || 'My Account'}</p>
           <p className="text-[11px] truncate" style={{ color: 'var(--t-3)' }}>Active</p>
         </div>
         <div className="min-w-0 flex-1 hidden group-hover:block">
@@ -171,7 +174,16 @@ function ProfileFooter() {
 }
 
 // ─── Sidebar ──────────────────────────────────────────────────────────────────
-export default function Sidebar({ isOpen, onClose }) {
+export default function Sidebar({ isOpen, onClose, onOpenModal }) {
+  const navigate = useNavigate()
+  const [username, setUsername] = useState('')
+
+  useEffect(() => {
+    getCurrentUserInfo().then(info => {
+      if (info?.username) setUsername(info.username)
+    })
+  }, [])
+
   return (
     <>
       {/* Mobile backdrop */}
@@ -233,9 +245,10 @@ export default function Sidebar({ isOpen, onClose }) {
           </div>
           <div className="space-y-2 px-1">
             {[
-              { label: 'Add Task',      color: '#7c3aed', action: () => window.location.href = '/' },
-              { label: 'Log Meal',      color: '#f97316', action: () => window.location.href = '/calories' },
-              { label: 'View Calendar', color: '#0ea5e9', action: () => window.location.href = '/calendar' },
+              { label: 'Add Task',      color: '#7c3aed', action: () => { onOpenModal('task'); onClose() } },
+              { label: 'Log Meal',      color: '#f97316', action: () => { onOpenModal('meal'); onClose() } },
+              { label: 'Add Water',     color: '#0ea5e9', action: () => { onOpenModal('water'); onClose() } },
+              { label: 'View Calendar', color: '#10b981', action: () => { navigate('/calendar'); onClose() } },
             ].map(({ label, color, action }) => (
               <button
                 key={label}
@@ -255,7 +268,7 @@ export default function Sidebar({ isOpen, onClose }) {
         </nav>
 
         <ScoreCard />
-        <ProfileFooter />
+        <ProfileFooter username={username} />
       </aside>
     </>
   )

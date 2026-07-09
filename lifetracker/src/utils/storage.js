@@ -43,6 +43,14 @@ export function setCurrentUser(id) {
   }
 }
 
+export async function getCurrentUserInfo() {
+  const userId = getCurrentUser()
+  if (!userId) return null
+  const rows = query('SELECT username FROM users WHERE id = ?', [userId])
+  if (rows.length > 0) return rows[0]
+  return null
+}
+
 export async function loginUser(username, password) {
   const hash = await hashPassword(password)
   const rows = query('SELECT id FROM users WHERE username = ? AND password_hash = ?', [username, hash])
@@ -98,7 +106,7 @@ const TABLE = {
 const SELECT_COLS = {
   calories:   'id, date, name, calories, protein, fat, carbs, photo',
   weight_log: 'id, date, weight',
-  tasks:      'id, date, title, completed',
+  tasks:      'id, date, start_time, end_time, title, completed',
   notes:      'id, date, content',
 }
 
@@ -113,20 +121,29 @@ function normalizeRow(collection, row) {
 
 const WORKOUT_KEYWORDS = ['run', 'gym', 'workout', 'тренировка', 'пробежка', 'зарядка', 'фітнес', 'тренування']
 
-function detectWorkout(text, date, sourceId) {
+function detectWorkout(text, date, sourceId, start_time, end_time) {
   if (!text) return
   const lower = text.toLowerCase()
   const matched = WORKOUT_KEYWORDS.some(kw => lower.includes(kw))
   if (matched) {
     const userId = getCurrentUser()
     if (!userId) return
-    // Перевіряємо чи вже є тренування з цього джерела
+    let estimatedCalories = 300 // default
+    if (start_time && end_time) {
+      const [sH, sM] = start_time.split(':').map(Number)
+      const [eH, eM] = end_time.split(':').map(Number)
+      if (!isNaN(sH) && !isNaN(sM) && !isNaN(eH) && !isNaN(eM)) {
+        let durationMinutes = (eH * 60 + eM) - (sH * 60 + sM)
+        if (durationMinutes < 0) durationMinutes += 24 * 60
+        estimatedCalories = Math.max(50, Math.round(durationMinutes * 7)) // Roughly 7 kcal per min
+      }
+    }
     const exists = query('SELECT id FROM workouts WHERE source_id = ?', [sourceId])
     if (exists.length === 0) {
       run('INSERT INTO workouts (id, date, title, calories_burned, source_id, user_id) VALUES (?,?,?,?,?,?)', 
-        [uid(), date, text.substring(0, 50), 300, sourceId, userId]) // 300 kcal як дефолт
+        [uid(), date, text.substring(0, 50), estimatedCalories, sourceId, userId])
     } else {
-      run('UPDATE workouts SET title = ?, date = ? WHERE source_id = ?', [text.substring(0, 50), date, sourceId])
+      run('UPDATE workouts SET title = ?, date = ?, calories_burned = ? WHERE source_id = ?', [text.substring(0, 50), date, estimatedCalories, sourceId])
     }
   }
 }
@@ -167,10 +184,10 @@ export async function addEntry(collection, entry) {
       break
     case 'tasks':
       run(
-        `INSERT INTO tasks (id, date, title, completed, user_id) VALUES (?,?,?,?,?)`,
-        [newEntry.id, newEntry.date, newEntry.title ?? '', newEntry.completed ? 1 : 0, userId]
+        `INSERT INTO tasks (id, date, start_time, end_time, title, completed, user_id) VALUES (?,?,?,?,?,?,?)`,
+        [newEntry.id, newEntry.date, newEntry.start_time ?? null, newEntry.end_time ?? null, newEntry.title ?? '', newEntry.completed ? 1 : 0, userId]
       )
-      detectWorkout(newEntry.title, newEntry.date, newEntry.id)
+      detectWorkout(newEntry.title, newEntry.date, newEntry.id, newEntry.start_time, newEntry.end_time)
       break
     case 'notes':
       run(
@@ -211,13 +228,15 @@ export async function updateEntry(collection, id, updates) {
       if (updates.title !== undefined) { fields.push('title = ?'); vals.push(updates.title) }
       if (updates.completed !== undefined) { fields.push('completed = ?'); vals.push(updates.completed ? 1 : 0) }
       if (updates.date !== undefined) { fields.push('date = ?'); vals.push(updates.date) }
+      if (updates.start_time !== undefined) { fields.push('start_time = ?'); vals.push(updates.start_time) }
+      if (updates.end_time !== undefined) { fields.push('end_time = ?'); vals.push(updates.end_time) }
       if (!fields.length) return null
       vals.push(id, userId)
       run(`UPDATE tasks SET ${fields.join(', ')} WHERE id = ? AND user_id = ?`, vals)
       
-      const rows = query('SELECT title, date FROM tasks WHERE id = ?', [id])
+      const rows = query('SELECT title, date, start_time, end_time FROM tasks WHERE id = ?', [id])
       if (rows.length) {
-        detectWorkout(rows[0].title, rows[0].date, id)
+        detectWorkout(rows[0].title, rows[0].date, id, rows[0].start_time, rows[0].end_time)
       }
       break
     }
@@ -267,9 +286,14 @@ export async function getSettings() {
   return {
     theme:     map.theme     ?? 'dark',
     geminiKey: map.geminiKey ?? '',
+    language:  map.language  ?? 'en',
     goals: (() => {
       try   { return JSON.parse(map.goals) }
       catch { return { calories: 2200, protein: 120, fat: 70, carbs: 250 } }
+    })(),
+    waterLog: (() => {
+      try   { return JSON.parse(map.waterLog) }
+      catch { return {} }
     })(),
   }
 }
@@ -287,6 +311,12 @@ export async function updateSettings(patch) {
     const cur = await getSettings()
     const merged = { ...cur.goals, ...patch.goals }
     run(`INSERT OR REPLACE INTO settings (key, value, user_id) VALUES ('goals', ?, ?)`, [JSON.stringify(merged), userId])
+  }
+  if (patch.waterLog !== undefined) {
+    run(`INSERT OR REPLACE INTO settings (key, value, user_id) VALUES ('waterLog', ?, ?)`, [JSON.stringify(patch.waterLog), userId])
+  }
+  if (patch.language !== undefined) {
+    run(`INSERT OR REPLACE INTO settings (key, value, user_id) VALUES ('language', ?, ?)`, [patch.language, userId])
   }
   return getSettings()
 }

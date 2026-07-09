@@ -1,6 +1,7 @@
 import { useRef, useState, useEffect } from 'react'
-import { Moon, Sun, Monitor, Download, Upload, Trash2, Info, ChevronRight, Palette, Database, ShieldAlert, Heart, Activity } from 'lucide-react'
+import { Moon, Sun, Monitor, Download, Upload, Trash2, Info, ChevronRight, Palette, Database, ShieldAlert, Heart, Activity, Globe } from 'lucide-react'
 import { exportData, importData, resetData, getSettings, updateSettings } from '../../utils/storage'
+import { useTranslation } from 'react-i18next'
 
 // Helper for classes
 function clsx(...args) { return args.filter(Boolean).join(' ') }
@@ -76,9 +77,11 @@ function StatusToast({ message, type }) {
 }
 
 export default function SettingsPage() {
+  const { i18n, t } = useTranslation()
   const importRef = useRef(null)
   const [status, setStatus] = useState({ message: '', type: 'ok' })
   const [theme, setTheme] = useState('dark')
+  const [language, setLanguage] = useState(i18n.language || 'en')
   const [goals, setGoals] = useState({ calories: 2200, protein: 120, fat: 70, carbs: 250 })
 
   useEffect(() => {
@@ -86,9 +89,13 @@ export default function SettingsPage() {
       if (s) {
         if (s.theme) setTheme(s.theme)
         if (s.goals) setGoals(s.goals)
+        if (s.language) {
+          setLanguage(s.language)
+          i18n.changeLanguage(s.language)
+        }
       }
     })
-  }, [])
+  }, [i18n])
 
   function showStatus(message, type = 'ok') {
     setStatus({ message, type })
@@ -105,6 +112,13 @@ export default function SettingsPage() {
     } else {
       document.documentElement.classList.remove('theme-light')
     }
+  }
+
+  async function handleLanguageChange(lang) {
+    setLanguage(lang)
+    i18n.changeLanguage(lang)
+    localStorage.setItem('app_lang', lang)
+    await updateSettings({ language: lang })
   }
 
   async function handleGoalChange(field, value) {
@@ -160,7 +174,7 @@ export default function SettingsPage() {
 
         {/* Header */}
         <div className="mb-8 anim-down">
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight mb-1" style={{ color: 'var(--t-1)' }}>Settings</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight mb-1" style={{ color: 'var(--t-1)' }}>{t('settings.title', 'Settings')}</h1>
           <p className="text-[14px]" style={{ color: 'var(--t-3)' }}>Manage your preferences and app data.</p>
         </div>
 
@@ -195,6 +209,39 @@ export default function SettingsPage() {
                   style={theme === 'light' ? { color: 'var(--t-1)' } : {}}
                 >
                   <Sun size={14} /> Light
+                </button>
+              </div>
+            }
+          />
+          <SettingsItem
+            icon={Globe}
+            title={t('settings.language', 'Language')}
+            description="Select your preferred language."
+            rightElement={
+              <div className="flex items-center rounded-lg p-1 border border-white/10" style={{ background: 'var(--bg-raised)' }}>
+                <button
+                  onClick={() => handleLanguageChange('en')}
+                  className={clsx(
+                    "flex items-center gap-1.5 px-3 py-1.5 rounded-md transition-all text-[12px] font-medium border",
+                    language === 'en'
+                      ? "bg-white/10 shadow-sm border-white/10"
+                      : "text-gray-400 hover:text-white border-transparent"
+                  )}
+                  style={language === 'en' ? { color: 'var(--t-1)' } : {}}
+                >
+                  English
+                </button>
+                <button
+                  onClick={() => handleLanguageChange('ua')}
+                  className={clsx(
+                    "flex items-center gap-1.5 px-3 py-1.5 rounded-md transition-all text-[12px] font-medium border",
+                    language === 'ua'
+                      ? "bg-white/10 shadow-sm border-white/10"
+                      : "text-gray-400 hover:text-white border-transparent"
+                  )}
+                  style={language === 'ua' ? { color: 'var(--t-1)' } : {}}
+                >
+                  Українська
                 </button>
               </div>
             }

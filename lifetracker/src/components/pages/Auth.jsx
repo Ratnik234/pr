@@ -39,7 +39,7 @@ export default function AuthPage({ onLoginSuccess }) {
   }
 
   return (
-    <div className="min-h-dvh flex items-center justify-center p-4" style={{ background: 'var(--bg-root)' }}>
+    <div className="min-h-screen w-full flex items-center justify-center p-4" style={{ background: 'var(--bg-root)' }}>
       {/* Ambient background mesh */}
       <div className="mesh-bg" aria-hidden="true" />
       

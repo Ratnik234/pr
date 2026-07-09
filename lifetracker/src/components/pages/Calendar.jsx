@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { ChevronLeft, ChevronRight, CheckCircle2, FileText, Utensils, Plus, Trash2, X } from 'lucide-react'
+import { ChevronLeft, ChevronRight, CheckCircle2, FileText, Utensils, Plus, Trash2, Edit2, X, Clock } from 'lucide-react'
 import { getEntries, getCaloriesByDate, updateEntry, addEntry, deleteEntry, uid } from '../../utils/storage'
 
 // Helper for classes
@@ -15,14 +15,16 @@ function toDateStr(d) {
   return `${y}-${m}-${day}`
 }
 
-function AddEntryModal({ onClose, onAdd, selectedDateStr }) {
-  const [type, setType] = useState('task') // 'task' | 'note'
-  const [text, setText] = useState('')
+function AddEntryModal({ onClose, onAdd, selectedDateStr, editEntry }) {
+  const [type, setType] = useState(editEntry ? (editEntry.title ? 'task' : 'note') : 'task')
+  const [text, setText] = useState(editEntry ? (editEntry.title || editEntry.content) : '')
+  const [startTime, setStartTime] = useState(editEntry?.start_time || '')
+  const [endTime, setEndTime] = useState(editEntry?.end_time || '')
 
   const handleSubmit = (e) => {
     e.preventDefault()
     if (!text.trim()) return
-    onAdd(type, text)
+    onAdd(type, text, startTime, endTime, editEntry?.id)
   }
 
   return (
@@ -51,15 +53,39 @@ function AddEntryModal({ onClose, onAdd, selectedDateStr }) {
           </div>
 
           {type === 'task' ? (
-            <input
-              type="text"
-              placeholder="Task title"
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              className="w-full px-4 py-3 rounded-xl text-[15px] transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
-              style={{ background: 'var(--bg-raised)', border: '1px solid var(--border)', color: 'var(--t-1)' }}
-              autoFocus
-            />
+            <>
+              <input
+                type="text"
+                placeholder="Task title"
+                value={text}
+                onChange={(e) => setText(e.target.value)}
+                className="w-full px-4 py-3 rounded-xl text-[15px] transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
+                style={{ background: 'var(--bg-raised)', border: '1px solid var(--border)', color: 'var(--t-1)' }}
+                autoFocus
+              />
+              <div className="flex gap-3">
+                <div className="flex-1 relative">
+                  <Clock size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                  <input 
+                    type="time" 
+                    value={startTime} 
+                    onChange={(e) => setStartTime(e.target.value)} 
+                    className="w-full pl-9 pr-3 py-3 rounded-xl text-[15px] outline-none" 
+                    style={{ background: 'var(--bg-raised)', border: '1px solid var(--border)', color: 'var(--t-1)' }} 
+                  />
+                </div>
+                <div className="flex-1 relative">
+                  <Clock size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                  <input 
+                    type="time" 
+                    value={endTime} 
+                    onChange={(e) => setEndTime(e.target.value)} 
+                    className="w-full pl-9 pr-3 py-3 rounded-xl text-[15px] outline-none" 
+                    style={{ background: 'var(--bg-raised)', border: '1px solid var(--border)', color: 'var(--t-1)' }} 
+                  />
+                </div>
+              </div>
+            </>
           ) : (
             <textarea
               placeholder="Write your note here..."
@@ -93,6 +119,7 @@ export default function CalendarPage() {
   const [allTaskDates, setAllTaskDates] = useState(new Set())
 
   const [showAddModal, setShowAddModal] = useState(false)
+  const [editEntryData, setEditEntryData] = useState(null)
 
   const selectedDateStr = useMemo(() => toDateStr(selectedDate), [selectedDate])
 
@@ -144,15 +171,24 @@ export default function CalendarPage() {
     }
   }
 
-  // Add entry for a specific selected date (not necessarily today)
-  const handleAddEntry = async (type, text) => {
-    const entryId = uid()
-    if (type === 'task') {
-      await addEntry('tasks', { id: entryId, date: selectedDateStr, title: text, completed: false })
+  // Add or Update entry
+  const handleAddEntry = async (type, text, startTime, endTime, editId) => {
+    if (editId) {
+      if (type === 'task') {
+        await updateEntry('tasks', editId, { title: text, start_time: startTime || null, end_time: endTime || null })
+      } else {
+        await updateEntry('notes', editId, { content: text })
+      }
     } else {
-      await addEntry('notes', { id: entryId, date: selectedDateStr, content: text })
+      const entryId = uid()
+      if (type === 'task') {
+        await addEntry('tasks', { id: entryId, date: selectedDateStr, title: text, start_time: startTime || null, end_time: endTime || null, completed: false })
+      } else {
+        await addEntry('notes', { id: entryId, date: selectedDateStr, content: text })
+      }
     }
     setShowAddModal(false)
+    setEditEntryData(null)
     loadData()
     loadAllTaskDates()
   }
@@ -290,7 +326,7 @@ export default function CalendarPage() {
               <h2 className="text-lg sm:text-xl font-bold tracking-tight" style={{ color: 'var(--t-1)' }}>
                 {formatSelectedDate(selectedDate)}
               </h2>
-              <button onClick={() => setShowAddModal(true)} className="icon-btn hover:text-indigo-400 transition-colors" aria-label="Add new entry">
+              <button onClick={() => { setEditEntryData(null); setShowAddModal(true); }} className="icon-btn hover:text-indigo-400 transition-colors" aria-label="Add new entry">
                 <Plus size={18} />
               </button>
             </div>
@@ -305,20 +341,32 @@ export default function CalendarPage() {
                   <div className="space-y-2">
                     {tasks.map(task => (
                       <div key={task.id} className="flex items-center justify-between p-2 sm:p-3 rounded-xl transition-colors border border-transparent hover:border-white/10 group" style={{ background: 'var(--bg-raised)' }}>
-                        <label className="flex items-center gap-3 cursor-pointer flex-1">
+                        <label className="flex items-center gap-3 cursor-pointer flex-1 min-w-0">
                           <input
                             type="checkbox"
                             checked={!!task.completed}
                             onChange={() => handleTaskToggle(task)}
                             className="w-4 h-4 rounded text-indigo-500 focus:ring-indigo-500 bg-black/20 border-white/20"
                           />
-                          <span className={clsx("text-[13px] transition-colors", task.completed ? "text-gray-400 line-through" : "text-gray-200")}>
-                            {task.title}
-                          </span>
+                          <div className="flex-1 min-w-0">
+                            <span className={clsx("text-[13px] transition-colors block truncate", task.completed ? "text-gray-400 line-through" : "text-gray-200")}>
+                              {task.title}
+                            </span>
+                            {(task.start_time || task.end_time) && (
+                              <span className="text-[10px] text-indigo-400/80 font-mono">
+                                {task.start_time || '?'} - {task.end_time || '?'}
+                              </span>
+                            )}
+                          </div>
                         </label>
-                        <button onClick={() => handleDeleteTask(task.id)} className="text-red-400 opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-red-500/20 rounded">
-                          <Trash2 size={14} />
-                        </button>
+                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button onClick={() => { setEditEntryData(task); setShowAddModal(true); }} className="text-indigo-300 p-1 hover:bg-indigo-500/20 rounded">
+                            <Edit2 size={14} />
+                          </button>
+                          <button onClick={() => handleDeleteTask(task.id)} className="text-red-400 p-1 hover:bg-red-500/20 rounded">
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -357,11 +405,16 @@ export default function CalendarPage() {
                 {notes.length > 0 ? (
                   <div className="space-y-3">
                     {notes.map(note => (
-                      <div key={note.id} className="relative p-4 rounded-xl text-[13px] text-gray-300 leading-relaxed italic border border-transparent hover:border-white/10 transition-colors group" style={{ background: 'var(--bg-raised)' }}>
+                      <div key={note.id} className="relative p-4 rounded-xl text-[13px] text-gray-300 leading-relaxed italic border border-transparent hover:border-white/10 transition-colors group pr-16" style={{ background: 'var(--bg-raised)' }}>
                         "{note.content}"
-                        <button onClick={() => handleDeleteNote(note.id)} className="absolute top-2 right-2 text-red-400 opacity-0 group-hover:opacity-100 transition-opacity p-1.5 bg-red-500/10 hover:bg-red-500/20 rounded-md">
-                          <Trash2 size={14} />
-                        </button>
+                        <div className="absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button onClick={() => { setEditEntryData(note); setShowAddModal(true); }} className="text-sky-300 p-1.5 bg-sky-500/10 hover:bg-sky-500/20 rounded-md">
+                            <Edit2 size={14} />
+                          </button>
+                          <button onClick={() => handleDeleteNote(note.id)} className="text-red-400 p-1.5 bg-red-500/10 hover:bg-red-500/20 rounded-md">
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -377,8 +430,9 @@ export default function CalendarPage() {
       {showAddModal && (
         <AddEntryModal
           selectedDateStr={selectedDateStr}
-          onClose={() => setShowAddModal(false)}
+          onClose={() => { setShowAddModal(false); setEditEntryData(null); }}
           onAdd={handleAddEntry}
+          editEntry={editEntryData}
         />
       )}
     </main>

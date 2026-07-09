@@ -1,5 +1,6 @@
-import { useMemo } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import { Search as SearchIcon, Bell, Menu, Plus, Activity } from 'lucide-react'
+import { getCurrentUserInfo } from '../../utils/storage'
 
 function useDate() {
   return useMemo(() => {
@@ -60,10 +61,11 @@ function DateBadge({ weekday, dateStr, isoDate }) {
 
 
 // ─── Add Button ───────────────────────────────────────────────────────────────
-function AddButton() {
+function AddButton({ onClick }) {
   return (
     <button
       id="header-add"
+      onClick={onClick}
       aria-label="Quick add"
       className="btn-primary hidden sm:flex items-center gap-1.5 text-[13px] px-3.5 py-2 rounded-[12px]"
     >
@@ -74,7 +76,8 @@ function AddButton() {
 }
 
 // ─── Avatar ───────────────────────────────────────────────────────────────────
-function Avatar() {
+function Avatar({ username }) {
+  const initial = username ? username.charAt(0).toUpperCase() : 'U'
   return (
     <button
       id="header-avatar"
@@ -85,7 +88,7 @@ function Avatar() {
         className="relative w-9 h-9 rounded-[13px] flex items-center justify-center flex-shrink-0 transition-transform duration-200 hover:scale-105"
         style={{ background: 'linear-gradient(135deg,#7c3aed,#ec4899)', boxShadow: '0 3px 12px rgba(124,58,237,0.4)' }}
       >
-        <span className="text-sm font-bold text-white leading-none select-none">AJ</span>
+        <span className="text-sm font-bold text-white leading-none select-none">{initial}</span>
         <span
           className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2"
           style={{ background: 'var(--emerald)', borderColor: 'var(--bg-panel)' }}
@@ -93,7 +96,7 @@ function Avatar() {
         />
       </div>
       <div className="hidden lg:block text-left">
-        <p className="text-[13px] font-semibold leading-tight" style={{ color: 'var(--t-1)' }}>Alex Johnson</p>
+        <p className="text-[13px] font-semibold leading-tight" style={{ color: 'var(--t-1)' }}>{username || 'User'}</p>
         <p className="text-[11px] leading-tight" style={{ color: 'var(--t-3)' }}>Pro Plan</p>
       </div>
     </button>
@@ -101,8 +104,15 @@ function Avatar() {
 }
 
 // ─── Header ──────────────────────────────────────────────────────────────────
-export default function Header({ onMenuOpen }) {
+export default function Header({ onMenuOpen, onOpenModal }) {
   const { weekday, dateStr, isoDate } = useDate()
+  const [username, setUsername] = useState('')
+
+  useEffect(() => {
+    getCurrentUserInfo().then(info => {
+      if (info?.username) setUsername(info.username)
+    })
+  }, [])
 
   return (
     <header
@@ -159,9 +169,9 @@ export default function Header({ onMenuOpen }) {
       {/* ── Right zone ── */}
       <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
         <Search />
-        <AddButton />
+        <AddButton onClick={() => onOpenModal('task')} />
         <div className="hidden sm:block w-px h-5" style={{ background: 'var(--border)' }} aria-hidden="true" />
-        <Avatar />
+        <Avatar username={username} />
       </div>
     </header>
   )
