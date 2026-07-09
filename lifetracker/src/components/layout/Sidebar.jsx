@@ -186,16 +186,6 @@ export default function Sidebar({ isOpen, onClose, onOpenModal }) {
 
   return (
     <>
-      {/* Mobile backdrop */}
-      {isOpen && (
-        <button
-          className="fixed inset-0 z-30 lg:hidden cursor-default"
-          style={{ background: 'rgba(0,0,0,0.65)', backdropFilter: 'blur(4px)' }}
-          onClick={onClose}
-          aria-label="Close navigation"
-          tabIndex={-1}
-        />
-      )}
 
       <aside
         id="sidebar"
@@ -212,15 +202,6 @@ export default function Sidebar({ isOpen, onClose, onOpenModal }) {
           borderColor: 'var(--border)',
         }}
       >
-        {/* Close button — mobile only */}
-        <button
-          onClick={onClose}
-          className="absolute top-4 right-4 icon-btn lg:hidden"
-          aria-label="Close sidebar"
-        >
-          <X size={16} />
-        </button>
-
         <Logo />
 
         {/* Divider */}

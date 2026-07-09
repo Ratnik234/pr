@@ -128,16 +128,42 @@ function detectWorkout(text, date, sourceId, start_time, end_time) {
   if (matched) {
     const userId = getCurrentUser()
     if (!userId) return
-    let estimatedCalories = 300 // default
+    let durationMinutes = 30 // default 30 mins
     if (start_time && end_time) {
       const [sH, sM] = start_time.split(':').map(Number)
       const [eH, eM] = end_time.split(':').map(Number)
       if (!isNaN(sH) && !isNaN(sM) && !isNaN(eH) && !isNaN(eM)) {
-        let durationMinutes = (eH * 60 + eM) - (sH * 60 + sM)
+        durationMinutes = (eH * 60 + eM) - (sH * 60 + sM)
         if (durationMinutes < 0) durationMinutes += 24 * 60
-        estimatedCalories = Math.max(50, Math.round(durationMinutes * 7)) // Roughly 7 kcal per min
       }
     }
+
+    // Calculate calories dynamically based on user profile
+    let estimatedCalories = 300 // fallback
+    try {
+      const rows = query('SELECT value FROM settings WHERE user_id = ? AND key = ?', [userId, 'profile'])
+      let profile = { weight: 70, height: 175, age: 30, gender: 'male' }
+      if (rows.length) {
+        const parsed = JSON.parse(rows[0].value)
+        profile = { ...profile, ...parsed }
+      }
+      
+      const weight = parseFloat(profile.weight) || 70
+      const height = parseFloat(profile.height) || 175
+      const age = parseFloat(profile.age) || 30
+      const isMale = profile.gender === 'male' || !profile.gender
+      
+      // Mifflin-St Jeor Equation for BMR
+      const bmr = (10 * weight) + (6.25 * height) - (5 * age) + (isMale ? 5 : -161)
+      const bmrPerMin = bmr / (24 * 60)
+      
+      // Assume MET = 6.0 for average workout
+      const MET = 6.0
+      estimatedCalories = Math.max(50, Math.round(bmrPerMin * MET * durationMinutes))
+    } catch(e) {
+      estimatedCalories = Math.max(50, Math.round(durationMinutes * 7))
+    }
+
     const exists = query('SELECT id FROM workouts WHERE source_id = ?', [sourceId])
     if (exists.length === 0) {
       run('INSERT INTO workouts (id, date, title, calories_burned, source_id, user_id) VALUES (?,?,?,?,?,?)', 
@@ -295,6 +321,10 @@ export async function getSettings() {
       try   { return JSON.parse(map.waterLog) }
       catch { return {} }
     })(),
+    profile: (() => {
+      try   { return JSON.parse(map.profile) }
+      catch { return { height: '', weight: '', age: '', gender: 'male', activityLevel: 'medium' } }
+    })(),
   }
 }
 
@@ -317,6 +347,9 @@ export async function updateSettings(patch) {
   }
   if (patch.language !== undefined) {
     run(`INSERT OR REPLACE INTO settings (key, value, user_id) VALUES ('language', ?, ?)`, [patch.language, userId])
+  }
+  if (patch.profile !== undefined) {
+    run(`INSERT OR REPLACE INTO settings (key, value, user_id) VALUES ('profile', ?, ?)`, [JSON.stringify(patch.profile), userId])
   }
   return getSettings()
 }

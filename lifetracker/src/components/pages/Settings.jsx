@@ -83,12 +83,14 @@ export default function SettingsPage() {
   const [theme, setTheme] = useState('dark')
   const [language, setLanguage] = useState(i18n.language || 'en')
   const [goals, setGoals] = useState({ calories: 2200, protein: 120, fat: 70, carbs: 250 })
+  const [profile, setProfile] = useState({ height: '', weight: '', age: '', gender: 'male', activityLevel: 'medium' })
 
   useEffect(() => {
     getSettings().then(s => {
       if (s) {
         if (s.theme) setTheme(s.theme)
         if (s.goals) setGoals(s.goals)
+        if (s.profile) setProfile(s.profile)
         if (s.language) {
           setLanguage(s.language)
           i18n.changeLanguage(s.language)
@@ -126,6 +128,12 @@ export default function SettingsPage() {
     const newGoals = { ...goals, [field]: val }
     setGoals(newGoals)
     await updateSettings({ goals: newGoals })
+  }
+
+  async function handleProfileChange(field, value) {
+    const newProfile = { ...profile, [field]: value }
+    setProfile(newProfile)
+    await updateSettings({ profile: newProfile })
   }
 
   async function handleExport() {
@@ -269,6 +277,69 @@ export default function SettingsPage() {
                   />
                 </div>
               ))}
+            </div>
+          </div>
+        </SettingsSection>
+
+        {/* Profile Details */}
+        <SettingsSection title={t('settings.profile', 'Profile')} icon={Heart} colorClass="text-pink-400">
+          <div className="p-4 sm:px-5">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+              <div>
+                <label className="block text-[12px] font-medium mb-1.5" style={{ color: 'var(--t-2)' }}>{t('settings.height', 'Height (cm)')}</label>
+                <input
+                  type="number"
+                  value={profile.height}
+                  onChange={(e) => handleProfileChange('height', e.target.value)}
+                  className="w-full px-3 py-2 rounded-lg text-sm transition-colors focus:outline-none focus:border-indigo-500"
+                  style={{ background: 'var(--bg-raised)', border: '1px solid var(--border)', color: 'var(--t-1)' }}
+                />
+              </div>
+              <div>
+                <label className="block text-[12px] font-medium mb-1.5" style={{ color: 'var(--t-2)' }}>{t('settings.weight', 'Weight (kg)')}</label>
+                <input
+                  type="number"
+                  value={profile.weight}
+                  onChange={(e) => handleProfileChange('weight', e.target.value)}
+                  className="w-full px-3 py-2 rounded-lg text-sm transition-colors focus:outline-none focus:border-indigo-500"
+                  style={{ background: 'var(--bg-raised)', border: '1px solid var(--border)', color: 'var(--t-1)' }}
+                />
+              </div>
+              <div>
+                <label className="block text-[12px] font-medium mb-1.5" style={{ color: 'var(--t-2)' }}>{t('settings.age', 'Age')}</label>
+                <input
+                  type="number"
+                  value={profile.age}
+                  onChange={(e) => handleProfileChange('age', e.target.value)}
+                  className="w-full px-3 py-2 rounded-lg text-sm transition-colors focus:outline-none focus:border-indigo-500"
+                  style={{ background: 'var(--bg-raised)', border: '1px solid var(--border)', color: 'var(--t-1)' }}
+                />
+              </div>
+              <div>
+                <label className="block text-[12px] font-medium mb-1.5" style={{ color: 'var(--t-2)' }}>{t('settings.gender', 'Gender (optional)')}</label>
+                <select
+                  value={profile.gender}
+                  onChange={(e) => handleProfileChange('gender', e.target.value)}
+                  className="w-full px-3 py-2 rounded-lg text-sm transition-colors focus:outline-none focus:border-indigo-500"
+                  style={{ background: 'var(--bg-raised)', border: '1px solid var(--border)', color: 'var(--t-1)' }}
+                >
+                  <option value="male">{t('settings.male', 'Male')}</option>
+                  <option value="female">{t('settings.female', 'Female')}</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-[12px] font-medium mb-1.5" style={{ color: 'var(--t-2)' }}>{t('settings.activityLevel', 'Activity Level (optional)')}</label>
+                <select
+                  value={profile.activityLevel}
+                  onChange={(e) => handleProfileChange('activityLevel', e.target.value)}
+                  className="w-full px-3 py-2 rounded-lg text-sm transition-colors focus:outline-none focus:border-indigo-500"
+                  style={{ background: 'var(--bg-raised)', border: '1px solid var(--border)', color: 'var(--t-1)' }}
+                >
+                  <option value="low">{t('settings.low', 'Low')}</option>
+                  <option value="medium">{t('settings.medium', 'Medium')}</option>
+                  <option value="high">{t('settings.high', 'High')}</option>
+                </select>
+              </div>
             </div>
           </div>
         </SettingsSection>

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
-import { CheckCircle2, Flame, Droplet, Smile, Plus, Utensils, FileText, Activity, Heart, Zap, X } from 'lucide-react'
+import { CheckCircle2, Flame, Droplet, Smile, Plus, Utensils, FileText, Activity, Heart, Zap, X, AlertTriangle } from 'lucide-react'
 import { getEntries, getDayTotals, getSettings, todayStr, addEntry, getActivityLog, getWorkouts, getCurrentUserInfo } from '../../utils/storage'
+import { useTranslation } from 'react-i18next'
 
 // Helper for classes
 function clsx(...args) { return args.filter(Boolean).join(' ') }
@@ -123,7 +124,67 @@ function AddNoteModal({ onClose, onAdd }) {
   )
 }
 
+function WarningsBanner({ activity, totals, goals, water }) {
+  const { t } = useTranslation()
+  const warnings = []
+
+  if (activity.caloriesBurned > 1000) {
+    warnings.push({
+      title: t('home.highLoadWarning', 'High Workout Load'),
+      desc: t('home.highLoadDesc', 'Consider resting tomorrow. Your workout load was extremely high today based on your profile.'),
+      icon: Zap,
+      color: 'text-amber-400',
+      bg: 'bg-amber-500/10',
+      border: 'border-amber-500/20'
+    })
+  }
+
+  const currentHour = new Date().getHours()
+  const waterLiters = (water || 0) * 0.25
+  if (currentHour >= 18 && waterLiters < 1.0) {
+    warnings.push({
+      title: t('home.lowWaterWarning', 'Hydration Needed'),
+      desc: t('home.lowWaterDesc', "You haven't logged enough water for today."),
+      icon: Droplet,
+      color: 'text-sky-400',
+      bg: 'bg-sky-500/10',
+      border: 'border-sky-500/20'
+    })
+  }
+
+  if (goals.calories > 0 && totals.calories > goals.calories * 1.2) {
+    warnings.push({
+      title: t('home.overCaloriesWarning', 'High Calories'),
+      desc: t('home.overCaloriesDesc', 'You exceeded your daily calorie goal significantly.'),
+      icon: AlertTriangle,
+      color: 'text-rose-400',
+      bg: 'bg-rose-500/10',
+      border: 'border-rose-500/20'
+    })
+  }
+
+  if (warnings.length === 0) return null
+
+  return (
+    <div className="flex flex-col gap-3 mb-6 anim-down">
+      <h2 className="text-[14px] font-bold uppercase tracking-[0.12em] mb-1" style={{ color: 'var(--t-3)' }}>
+        {t('home.warnings', 'Warnings')}
+      </h2>
+      {warnings.map((w, i) => (
+        <div key={i} className={`p-4 rounded-xl border flex gap-4 ${w.bg} ${w.border}`}>
+          <w.icon className={`flex-shrink-0 ${w.color}`} size={24} />
+          <div>
+            <h3 className={`font-bold text-[15px] ${w.color}`}>{w.title}</h3>
+            <p className="text-[13px] mt-1" style={{ color: 'var(--t-2)' }}>{w.desc}</p>
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 export default function Home() {
+  const { t } = useTranslation()
   const [tasks, setTasks]   = useState([])
   const [totals, setTotals] = useState({ calories: 0 })
   const [goals, setGoals]   = useState({ calories: 2200 })
@@ -131,6 +192,7 @@ export default function Home() {
   const [habitLog, setHabitLog] = useState([])
   const [activity, setActivity] = useState({ steps: 0, distance: 0, caloriesBurned: 0 })
   const [username, setUsername] = useState('User')
+  const [water, setWater] = useState(0)
   const [motionSupported, setMotionSupported] = useState(true)
 
   useEffect(() => {
@@ -159,6 +221,9 @@ export default function Home() {
     setTotals(dayTotals)
     if (s?.goals) setGoals(s.goals)
     if (user?.username) setUsername(user.username)
+    if (s?.waterLog) {
+      setWater(s.waterLog[today] || 0)
+    }
     
     // Sum workout calories
     const calsBurned = works.filter(w => w.date === today).reduce((sum, w) => sum + (w.calories_burned || 0), 0)
@@ -189,17 +254,19 @@ export default function Home() {
         {/* Greeting */}
         <header className="anim-down">
           <h1 className="text-3xl sm:text-4xl font-bold tracking-tight mb-2" style={{ color: 'var(--t-1)' }}>
-            Good morning, {username} 👋
+            {t('home.goodMorning', 'Good morning')}, {username} 👋
           </h1>
           <p className="text-[15px]" style={{ color: 'var(--t-2)' }}>
-            Let's make today a great day. Here is your overview.
+            {t('home.todayOverview', "Let's make today a great day. Here is your overview.")}
           </p>
         </header>
+
+        <WarningsBanner activity={activity} totals={totals} goals={goals} water={water} />
 
         {/* Today's Overview */}
         <section aria-labelledby="overview-heading">
           <h2 id="overview-heading" className="text-[14px] font-bold uppercase tracking-[0.12em] mb-4" style={{ color: 'var(--t-3)' }}>
-            Today's Overview
+            {t('home.todayOverview', "Today's Overview")}
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
             <OverviewCard title="Completed Tasks" value={`${completedTasks} / ${totalTasks}`} subtext={`${totalTasks - completedTasks} tasks remaining`} Icon={CheckCircle2} gradientClass="bg-gradient-to-br from-violet-500 to-indigo-600" delay="anim-delay-1" />
@@ -212,12 +279,12 @@ export default function Home() {
         {/* Quick Actions */}
         <section aria-labelledby="actions-heading">
           <h2 id="actions-heading" className="text-[14px] font-bold uppercase tracking-[0.12em] mb-4" style={{ color: 'var(--t-3)' }}>
-            Quick Actions
+            {t('home.quickActions', 'Quick Actions')}
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <QuickActionButton label="Add Task"  Icon={Plus}     colorClass="text-violet-400" delay="anim-delay-2" onClick={() => setShowTaskModal(true)} />
-            <QuickActionButton label="Add Meal"  Icon={Utensils} colorClass="text-orange-400" delay="anim-delay-3" onClick={() => { window.location.href = '/calories' }} />
-            <QuickActionButton label="Add Note"  Icon={FileText} colorClass="text-sky-400"    delay="anim-delay-4" onClick={() => setShowNoteModal(true)} />
+            <QuickActionButton label={t('home.logWorkout', 'Add Task')}  Icon={Plus}     colorClass="text-violet-400" delay="anim-delay-2" onClick={() => setShowTaskModal(true)} />
+            <QuickActionButton label={t('home.addCalories', 'Add Meal')}  Icon={Utensils} colorClass="text-orange-400" delay="anim-delay-3" onClick={() => { window.location.href = '/calories' }} />
+            <QuickActionButton label={t('home.addNote', 'Add Note')}  Icon={FileText} colorClass="text-sky-400"    delay="anim-delay-4" onClick={() => setShowNoteModal(true)} />
           </div>
         </section>
 

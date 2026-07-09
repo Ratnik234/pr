@@ -7,13 +7,14 @@ import {
   PointElement,
   LineElement,
   BarElement,
-  Title,
+  Title as ChartTitle,
   Tooltip,
   Filler,
   Legend,
 } from 'chart.js'
 import { Line, Bar } from 'react-chartjs-2'
 import { getDayTotals, computeStreak, getSettings, getEntries, addEntry, updateEntry, todayStr, getActivityLog, logActivity, getWorkouts } from '../../utils/storage'
+import { useTranslation } from 'react-i18next'
 
 // Register Chart.js components
 ChartJS.register(
@@ -22,7 +23,7 @@ ChartJS.register(
   PointElement,
   LineElement,
   BarElement,
-  Title,
+  ChartTitle,
   Tooltip,
   Filler,
   Legend
@@ -88,8 +89,73 @@ function RecentStatItem({ title, value, date, isPositive }) {
   )
 }
 
+function RecommendationsSection({ workouts, t }) {
+  const recommendations = []
+  const exerciseStats = {}
+  
+  workouts.forEach(w => {
+    const match = w.title.match(/^(.*?)\s*(\d+(?:\.\d+)?)\s*(kg|lbs)/i)
+    if (match) {
+      const exercise = match[1].trim().toLowerCase()
+      const weight = parseFloat(match[2])
+      const date = new Date(w.date)
+      if (!exerciseStats[exercise]) exerciseStats[exercise] = []
+      exerciseStats[exercise].push({ weight, date })
+    }
+  })
+
+  const now = new Date()
+  Object.keys(exerciseStats).forEach(ex => {
+    const history = exerciseStats[ex].sort((a,b) => a.date - b.date)
+    if (history.length < 2) return
+    const latest = history[history.length - 1]
+    const latestWeight = latest.weight
+    
+    const firstTimeAtWeight = history.find(h => h.weight === latestWeight).date
+    const daysSince = (now - firstTimeAtWeight) / (1000 * 60 * 60 * 24)
+    const daysSinceLastLift = (now - latest.date) / (1000 * 60 * 60 * 24)
+    
+    if (daysSinceLastLift > 14) return
+    
+    if (daysSince > 30) {
+      recommendations.push({
+        title: t('stats.noProgress', 'Plateau Detected'),
+        desc: t('stats.noProgressDesc', "Your lifting weight hasn't changed in a month. Consider a new training program."),
+        ex: ex.charAt(0).toUpperCase() + ex.slice(1),
+        color: 'text-amber-400', bg: 'bg-amber-500/10', border: 'border-amber-500/20'
+      })
+    } else if (daysSince > 14) {
+      recommendations.push({
+        title: t('stats.increaseWeight', 'Increase Weight'),
+        desc: t('stats.increaseWeightDesc', "You have been lifting {{weight}}kg for a while. Consider increasing by 2.5-5kg.", { weight: latestWeight }),
+        ex: ex.charAt(0).toUpperCase() + ex.slice(1),
+        color: 'text-emerald-400', bg: 'bg-emerald-500/10', border: 'border-emerald-500/20'
+      })
+    }
+  })
+
+  if (recommendations.length === 0) return null
+
+  return (
+    <section aria-labelledby="recs-heading" className="glass-card p-6 anim-up anim-delay-3">
+      <h2 id="recs-heading" className="text-lg font-bold tracking-tight mb-5 pb-4 border-b" style={{ color: 'var(--t-1)', borderColor: 'var(--border)' }}>
+        {t('stats.recommendations', 'Recommendations')}
+      </h2>
+      <div className="space-y-3">
+        {recommendations.map((r, i) => (
+          <div key={i} className={`p-4 rounded-xl border ${r.bg} ${r.border}`}>
+            <h3 className={`font-bold text-[15px] ${r.color}`}>{r.title} ({r.ex})</h3>
+            <p className="text-[13px] mt-1" style={{ color: 'var(--t-2)' }}>{r.desc}</p>
+          </div>
+        ))}
+      </div>
+    </section>
+  )
+}
+
 // ─── StatisticsPage ───────────────────────────────────────────────────────────
 export default function StatisticsPage() {
+  const { t } = useTranslation()
   const [weeklyData,    setWeeklyData]    = useState({ labels: [], values: [], calorieLimit: 2200 })
   const [weightData,    setWeightData]    = useState({ labels: [], values: [] })
   const [streak,        setStreak]        = useState(0)
@@ -271,7 +337,7 @@ export default function StatisticsPage() {
 
         {/* Header */}
         <div className="anim-down">
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight mb-1" style={{ color: 'var(--t-1)' }}>Statistics</h1>
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight mb-1" style={{ color: 'var(--t-1)' }}>{t('stats.title', 'Statistics')}</h1>
           <p className="text-[14px]" style={{ color: 'var(--t-3)' }}>Deep dive into your health and productivity data.</p>
         </div>
 
@@ -282,6 +348,8 @@ export default function StatisticsPage() {
           <StatCard title="Daily Goal"       value={weeklyData.calorieLimit}                               subtitle="kcal target / day"          trend={0}              Icon={CheckSquare}   gradientClass="bg-gradient-to-br from-sky-400 to-blue-600"       delay="anim-delay-3" />
           <StatCard title="Days Tracked"     value={weeklyData.values.filter(v => v > 0).length}           subtitle="Out of last 7 days"         trend={18}             Icon={Trophy}        gradientClass="bg-gradient-to-br from-amber-400 to-orange-500"   delay="anim-delay-4" />
         </div>
+
+        <RecommendationsSection workouts={workouts} t={t} />
 
         {/* Activity & Workouts Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">

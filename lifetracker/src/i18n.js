@@ -19,18 +19,53 @@ const resources = {
         healthScore: 'Health Score',
         excellentDay: 'Excellent day!'
       },
-      settings: {
-        title: 'Settings',
-        language: 'Language',
-        save: 'Save Changes'
+      nav: {
+        home: "Home",
+        calendar: "Calendar",
+        calories: "Calories",
+        stats: "Statistics",
+        settings: "Settings"
       },
-      auth: {
-        login: 'Log In',
-        register: 'Register',
-        email: 'Email',
-        password: 'Password',
-        noAccount: "Don't have an account? Register",
-        hasAccount: 'Already have an account? Log In'
+      home: {
+        goodMorning: "Good Morning",
+        goodAfternoon: "Good Afternoon",
+        goodEvening: "Good Evening",
+        todayOverview: "Today's Overview",
+        quickActions: "Quick Actions",
+        logWorkout: "Log Workout",
+        addWater: "Add Water",
+        addNote: "Add Note",
+        addCalories: "Add Calories",
+        warnings: "Warnings",
+        highLoadWarning: "High Workout Load",
+        highLoadDesc: "Consider resting tomorrow. Your workout load was extremely high today based on your profile.",
+        lowWaterWarning: "Hydration Needed",
+        lowWaterDesc: "You haven't logged enough water for today.",
+        overCaloriesWarning: "High Calories",
+        overCaloriesDesc: "You exceeded your daily calorie goal significantly."
+      },
+      settings: {
+        profile: "Profile",
+        height: "Height (cm)",
+        weight: "Weight (kg)",
+        age: "Age",
+        gender: "Gender (optional)",
+        activityLevel: "Activity Level (optional)",
+        male: "Male",
+        female: "Female",
+        low: "Low",
+        medium: "Medium",
+        high: "High",
+        goals: "Goals",
+        theme: "Theme"
+      },
+      stats: {
+        title: "Statistics",
+        recommendations: "Recommendations",
+        increaseWeight: "Increase Weight",
+        increaseWeightDesc: "You have been lifting {{weight}}kg for a while. Consider increasing by 2.5-5kg.",
+        noProgress: "Plateau Detected",
+        noProgressDesc: "Your lifting weight hasn't changed in a month. Consider a new training program."
       }
     }
   },
@@ -50,10 +85,48 @@ const resources = {
         healthScore: 'Оцінка здоров\'я',
         excellentDay: 'Чудовий день!'
       },
+      nav: {
+        home: "Головна",
+        calendar: "Календар",
+        calories: "Калорії",
+        stats: "Статистика",
+        settings: "Налаштування"
+      },
+      home: {
+        goodMorning: "Доброго ранку",
+        goodAfternoon: "Доброго дня",
+        goodEvening: "Доброго вечора",
+        todayOverview: "Огляд на сьогодні",
+        quickActions: "Швидкі дії",
+        logWorkout: "Додати тренування",
+        addWater: "Додати воду",
+        addNote: "Додати нотатку",
+        addCalories: "Додати калорії",
+        warnings: "Попередження",
+        highLoadWarning: "Високе навантаження",
+        highLoadDesc: "Подумайте про відпочинок завтра. Ваше навантаження сьогодні було надто високим з урахуванням профілю.",
+        lowWaterWarning: "Потрібна гідратація",
+        lowWaterDesc: "Ви випили недостатньо води на сьогодні.",
+        overCaloriesWarning: "Багато калорій",
+        overCaloriesDesc: "Ви значно перевищили свою денну норму калорій."
+      },
       settings: {
         title: 'Налаштування',
         language: 'Мова',
-        save: 'Зберегти зміни'
+        save: 'Зберегти зміни',
+        profile: "Профіль",
+        height: "Зріст (см)",
+        weight: "Вага (кг)",
+        age: "Вік",
+        gender: "Стать (необов'язково)",
+        activityLevel: "Рівень активності",
+        male: "Чоловіча",
+        female: "Жіноча",
+        low: "Низький",
+        medium: "Середній",
+        high: "Високий",
+        goals: "Цілі",
+        theme: "Тема"
       },
       auth: {
         login: 'Увійти',
@@ -62,6 +135,14 @@ const resources = {
         password: 'Пароль',
         noAccount: 'Немає акаунта? Зареєструватися',
         hasAccount: 'Вже є акаунт? Увійти'
+      },
+      stats: {
+        title: "Статистика",
+        recommendations: "Рекомендації",
+        increaseWeight: "Збільште вагу",
+        increaseWeightDesc: "Ви піднімаєте {{weight}}кг вже деякий час. Спробуйте додати 2.5-5кг.",
+        noProgress: "Застій у прогресі",
+        noProgressDesc: "Ваша робоча вага не змінювалась вже місяць. Спробуйте змінити програму тренувань."
       }
     }
   }

@@ -129,29 +129,6 @@ export default function Header({ onMenuOpen, onOpenModal }) {
     >
       {/* ── Left zone ── */}
       <div className="flex items-center gap-3 flex-shrink-0">
-        {/* Hamburger — mobile only */}
-        <button
-          id="sidebar-toggle"
-          className="icon-btn lg:hidden"
-          onClick={onMenuOpen}
-          aria-label="Open navigation"
-          aria-expanded="false"
-          aria-controls="sidebar"
-        >
-          <Menu size={17} />
-        </button>
-
-        {/* Mobile logo mark */}
-        <div className="flex items-center gap-2 lg:hidden">
-          <div
-            className="w-7 h-7 rounded-[10px] flex items-center justify-center"
-            style={{ background: 'linear-gradient(135deg,#7c3aed,#6366f1)' }}
-          >
-            <Activity size={14} className="text-white" />
-          </div>
-          <span className="text-sm font-bold gradient-brand">LifeTracker</span>
-        </div>
-
         {/* Divider */}
         <div className="hidden lg:block w-px h-5" style={{ background: 'var(--border)' }} aria-hidden="true" />
 
