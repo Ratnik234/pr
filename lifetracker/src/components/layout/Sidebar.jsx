@@ -134,24 +134,34 @@ function ScoreCard() {
 
 // ─── User Profile Footer ──────────────────────────────────────────────────────
 function ProfileFooter() {
+  const handleLogout = () => {
+    localStorage.removeItem('lifetracker_session')
+    window.location.reload()
+  }
+
   return (
     <div className="px-3 pb-5">
       <div
-        className="flex items-center gap-3 p-3 rounded-[16px] cursor-pointer hover:brightness-110 transition-all duration-200"
+        className="flex items-center gap-3 p-3 rounded-[16px] cursor-pointer hover:brightness-110 transition-all duration-200 group"
         style={{ background: 'var(--bg-hover)', border: '1px solid var(--border)' }}
+        onClick={handleLogout}
+        title="Logout"
       >
         <div
           className="w-9 h-9 rounded-[12px] flex items-center justify-center flex-shrink-0"
           style={{ background: 'linear-gradient(135deg,#7c3aed,#ec4899)' }}
         >
-          <span className="text-sm font-bold text-white">AJ</span>
+          <span className="text-sm font-bold text-white">LT</span>
         </div>
-        <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold truncate" style={{ color: 'var(--t-1)' }}>Alex Johnson</p>
-          <p className="text-[11px] truncate" style={{ color: 'var(--t-3)' }}>Pro Plan · Active</p>
+        <div className="min-w-0 flex-1 group-hover:hidden">
+          <p className="text-sm font-semibold truncate" style={{ color: 'var(--t-1)' }}>My Account</p>
+          <p className="text-[11px] truncate" style={{ color: 'var(--t-3)' }}>Active</p>
+        </div>
+        <div className="min-w-0 flex-1 hidden group-hover:block">
+          <p className="text-sm font-bold text-red-400">Logout</p>
         </div>
         <div
-          className="w-2 h-2 rounded-full flex-shrink-0"
+          className="w-2 h-2 rounded-full flex-shrink-0 group-hover:hidden"
           style={{ background: 'var(--emerald)' }}
           aria-label="online"
         />
@@ -223,12 +233,13 @@ export default function Sidebar({ isOpen, onClose }) {
           </div>
           <div className="space-y-2 px-1">
             {[
-              { label: 'Log Meal',      color: '#f97316' },
-              { label: 'Start Workout', color: '#7c3aed' },
-              { label: 'Add Water',     color: '#0ea5e9' },
-            ].map(({ label, color }) => (
+              { label: 'Add Task',      color: '#7c3aed', action: () => window.location.href = '/' },
+              { label: 'Log Meal',      color: '#f97316', action: () => window.location.href = '/calories' },
+              { label: 'View Calendar', color: '#0ea5e9', action: () => window.location.href = '/calendar' },
+            ].map(({ label, color, action }) => (
               <button
                 key={label}
+                onClick={action}
                 className="w-full flex items-center gap-2.5 text-[13px] font-medium py-2.5 px-3 rounded-[12px] transition-all duration-200 hover:brightness-110"
                 style={{
                   background: `${color}14`,

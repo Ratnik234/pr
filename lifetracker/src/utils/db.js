@@ -71,6 +71,12 @@ async function idbDelete(key) {
 
 // ─── DDL: схема таблиць ───────────────────────────────────────────────────────
 const SCHEMA_SQL = `
+  CREATE TABLE IF NOT EXISTS users (
+    id            TEXT PRIMARY KEY,
+    username      TEXT UNIQUE NOT NULL,
+    password_hash TEXT NOT NULL
+  );
+
   CREATE TABLE IF NOT EXISTS calories (
     id       TEXT PRIMARY KEY,
     date     TEXT NOT NULL,
@@ -79,50 +85,77 @@ const SCHEMA_SQL = `
     protein  REAL    DEFAULT 0,
     fat      REAL    DEFAULT 0,
     carbs    REAL    DEFAULT 0,
-    photo    TEXT
+    photo    TEXT,
+    user_id  TEXT
   );
 
   CREATE TABLE IF NOT EXISTS weight_log (
-    id     TEXT PRIMARY KEY,
-    date   TEXT NOT NULL UNIQUE,
-    weight REAL NOT NULL
+    id       TEXT PRIMARY KEY,
+    date     TEXT NOT NULL,
+    weight   REAL NOT NULL,
+    user_id  TEXT
   );
 
   CREATE TABLE IF NOT EXISTS tasks (
     id        TEXT PRIMARY KEY,
     date      TEXT NOT NULL,
     title     TEXT NOT NULL,
-    completed INTEGER DEFAULT 0
+    completed INTEGER DEFAULT 0,
+    user_id   TEXT
   );
 
   CREATE TABLE IF NOT EXISTS notes (
     id      TEXT PRIMARY KEY,
     date    TEXT NOT NULL,
-    content TEXT NOT NULL
+    content TEXT NOT NULL,
+    user_id TEXT
   );
 
   CREATE TABLE IF NOT EXISTS habit_defs (
     id              TEXT PRIMARY KEY,
     name            TEXT NOT NULL,
-    target_per_week INTEGER DEFAULT 3
+    target_per_week INTEGER DEFAULT 3,
+    user_id         TEXT
   );
 
   CREATE TABLE IF NOT EXISTS habit_log (
     id       TEXT PRIMARY KEY,
     date     TEXT NOT NULL,
     habit_id TEXT NOT NULL,
+    user_id  TEXT,
     FOREIGN KEY (habit_id) REFERENCES habit_defs(id)
   );
 
   CREATE TABLE IF NOT EXISTS settings (
-    key   TEXT PRIMARY KEY,
-    value TEXT NOT NULL
+    key     TEXT PRIMARY KEY,
+    value   TEXT NOT NULL,
+    user_id TEXT
+  );
+
+  CREATE TABLE IF NOT EXISTS activity_log (
+    id               TEXT PRIMARY KEY,
+    date             TEXT NOT NULL,
+    steps            INTEGER DEFAULT 0,
+    distance         REAL DEFAULT 0,
+    running_distance REAL DEFAULT 0,
+    user_id          TEXT
+  );
+
+  CREATE TABLE IF NOT EXISTS workouts (
+    id              TEXT PRIMARY KEY,
+    date            TEXT NOT NULL,
+    title           TEXT NOT NULL,
+    calories_burned INTEGER DEFAULT 0,
+    source_id       TEXT,
+    user_id         TEXT
   );
 
   CREATE INDEX IF NOT EXISTS idx_calories_date  ON calories(date);
   CREATE INDEX IF NOT EXISTS idx_tasks_date     ON tasks(date);
   CREATE INDEX IF NOT EXISTS idx_notes_date     ON notes(date);
   CREATE INDEX IF NOT EXISTS idx_habit_log_date ON habit_log(date);
+  CREATE INDEX IF NOT EXISTS idx_activity_date  ON activity_log(date);
+  CREATE INDEX IF NOT EXISTS idx_workouts_date  ON workouts(date);
 `
 
 // ─── Seed: дефолтні дані ─────────────────────────────────────────────────────
@@ -143,18 +176,61 @@ function seedDefaults(db) {
   if (count === 0) {
     DEFAULT_HABIT_DEFS.forEach(h => {
       db.run(
-        'INSERT OR IGNORE INTO habit_defs (id, name, target_per_week) VALUES (?,?,?)',
-        [h.id, h.name, h.target_per_week]
+        'INSERT OR IGNORE INTO habit_defs (id, name, target_per_week, user_id) VALUES (?,?,?,?)',
+        [h.id, h.name, h.target_per_week, 'default']
       )
     })
   }
   // Settings — тільки відсутні ключі
   Object.entries(DEFAULT_SETTINGS).forEach(([key, value]) => {
     db.run(
-      'INSERT OR IGNORE INTO settings (key, value) VALUES (?,?)',
-      [key, typeof value === 'string' ? value : JSON.stringify(value)]
+      'INSERT OR IGNORE INTO settings (key, value, user_id) VALUES (?,?,?)',
+      [key, typeof value === 'string' ? value : JSON.stringify(value), 'default']
     )
   })
+}
+
+function applyMigrations(db) {
+  // Add user_id to tables if it doesn't exist
+  const tables = ['calories', 'weight_log', 'tasks', 'notes', 'habit_defs', 'habit_log', 'settings']
+  
+  for (const table of tables) {
+    const info = db.exec(`PRAGMA table_info(${table})`)
+    if (info.length === 0) continue; // Table doesn't exist yet? (should exist from SCHEMA_SQL)
+    const columns = info[0].values.map(row => row[1]) // Index 1 is the column name
+    
+    if (!columns.includes('user_id')) {
+      db.run(`ALTER TABLE ${table} ADD COLUMN user_id TEXT DEFAULT 'default'`)
+      
+      // Settings might need primary key adjustment, but SQLite ALTER TABLE doesn't allow changing PK.
+      // We will handle settings simply by querying by user_id and key. The PK is still just 'key',
+      // which is problematic if multiple users have the same setting key.
+      // So let's drop the settings table and recreate it with a composite primary key if needed,
+      // but actually, we can just let it be and use (user_id, key) UNIQUE index.
+      if (table === 'settings') {
+        db.run('DROP TABLE IF EXISTS settings')
+        db.run(`
+          CREATE TABLE settings (
+            key     TEXT,
+            value   TEXT NOT NULL,
+            user_id TEXT,
+            PRIMARY KEY (key, user_id)
+          )
+        `)
+      }
+      if (table === 'weight_log') {
+         db.run('DROP TABLE IF EXISTS weight_log')
+         db.run(`
+          CREATE TABLE weight_log (
+            id       TEXT PRIMARY KEY,
+            date     TEXT NOT NULL,
+            weight   REAL NOT NULL,
+            user_id  TEXT
+          )
+        `)
+      }
+    }
+  }
 }
 
 // ─── initDB ───────────────────────────────────────────────────────────────────
@@ -190,6 +266,9 @@ async function _doInit() {
 
     // 3. Застосовуємо схему (CREATE TABLE IF NOT EXISTS — ідемпотентно)
     _db.run(SCHEMA_SQL)
+
+    // Apply migrations (like adding user_id to older tables)
+    applyMigrations(_db)
 
     // 4. Seed дефолтів якщо нові таблиці
     seedDefaults(_db)

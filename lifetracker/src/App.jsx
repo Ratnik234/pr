@@ -2,12 +2,17 @@ import { BrowserRouter } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import './index.css'
 import AppLayout from './components/layout/AppLayout'
-import { getSettings } from './utils/storage'
+import AuthPage from './components/pages/Auth'
+import { getSettings, getCurrentUser } from './utils/storage'
 
 function App() {
   const [themeReady, setThemeReady] = useState(false)
+  const [user, setUser] = useState(null)
 
   useEffect(() => {
+    // Check auth
+    setUser(getCurrentUser())
+
     // getSettings є async — чекаємо результату перед рендером лейауту
     getSettings().then(s => {
       if (s?.theme === 'light') {
@@ -20,6 +25,10 @@ function App() {
   }, [])
 
   if (!themeReady) return null  // DBProvider вже показує spinner; тут просто тримаємо паузу
+
+  if (!user) {
+    return <AuthPage onLoginSuccess={() => setUser(getCurrentUser())} />
+  }
 
   return (
     <BrowserRouter>

@@ -1,10 +1,7 @@
 /**
  * src/utils/storage.js
  * ─────────────────────────────────────────────────────────────────────────────
- * LifeTracker — публічне API для роботи з даними.
- * Всі операції делегуються у SQLite через db.js.
- *
- * ⚠ Всі функції (крім todayStr / uid) є async.
+ * LifeTracker — API для роботи з даними (SQLite).
  *
  * Колекції:
  *   'calories'   → таблиця calories
@@ -25,7 +22,72 @@ export function todayStr() {
   return new Date().toISOString().slice(0, 10)
 }
 
-// Маппінг: назва колекції → SQL-таблиця
+// ─── Auth ─────────────────────────────────────────────────────────────────────
+
+async function hashPassword(password) {
+  const msgUint8 = new TextEncoder().encode(password)
+  const hashBuffer = await crypto.subtle.digest('SHA-256', msgUint8)
+  const hashArray = Array.from(new Uint8Array(hashBuffer))
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('')
+}
+
+export function getCurrentUser() {
+  return localStorage.getItem('lifetracker_session')
+}
+
+export function setCurrentUser(id) {
+  if (id) {
+    localStorage.setItem('lifetracker_session', id)
+  } else {
+    localStorage.removeItem('lifetracker_session')
+  }
+}
+
+export async function loginUser(username, password) {
+  const hash = await hashPassword(password)
+  const rows = query('SELECT id FROM users WHERE username = ? AND password_hash = ?', [username, hash])
+  if (rows.length > 0) {
+    setCurrentUser(rows[0].id)
+    return { ok: true }
+  }
+  return { ok: false, message: 'Invalid username or password' }
+}
+
+export async function registerUser(username, password) {
+  const exists = query('SELECT id FROM users WHERE username = ?', [username])
+  if (exists.length > 0) {
+    return { ok: false, message: 'Username already exists' }
+  }
+
+  const hash = await hashPassword(password)
+  const userId = uid()
+  
+  // Перевіряємо, чи це перший користувач
+  const userCount = query('SELECT COUNT(*) as c FROM users')[0]?.c ?? 0
+  
+  run('INSERT INTO users (id, username, password_hash) VALUES (?,?,?)', [userId, username, hash])
+  
+  if (userCount === 0) {
+    // Міграція існуючих даних на першого користувача
+    const tables = ['calories', 'weight_log', 'tasks', 'notes', 'habit_defs', 'habit_log', 'settings', 'activity_log', 'workouts']
+    for (const table of tables) {
+      // Ігноруємо помилки якщо таблиця чомусь не існує або не має user_id
+      try {
+        run(`UPDATE ${table} SET user_id = ? WHERE user_id = 'default' OR user_id IS NULL`, [userId])
+      } catch(e) {}
+    }
+  }
+  
+  setCurrentUser(userId)
+  return { ok: true }
+}
+
+export function logoutUser() {
+  setCurrentUser(null)
+}
+
+// ─── CRUD Config ──────────────────────────────────────────────────────────────
+
 const TABLE = {
   calories: 'calories',
   weight:   'weight_log',
@@ -33,7 +95,6 @@ const TABLE = {
   notes:    'notes',
 }
 
-// Колонки для SELECT (щоб weight_log мав поле 'weight' у відповіді)
 const SELECT_COLS = {
   calories:   'id, date, name, calories, protein, fat, carbs, photo',
   weight_log: 'id, date, weight',
@@ -41,74 +102,83 @@ const SELECT_COLS = {
   notes:      'id, date, content',
 }
 
+function normalizeRow(collection, row) {
+  if (collection === 'tasks') {
+    return { ...row, completed: row.completed === 1 }
+  }
+  return row
+}
+
+// ─── Auto Workouts ────────────────────────────────────────────────────────────
+
+const WORKOUT_KEYWORDS = ['run', 'gym', 'workout', 'тренировка', 'пробежка', 'зарядка', 'фітнес', 'тренування']
+
+function detectWorkout(text, date, sourceId) {
+  if (!text) return
+  const lower = text.toLowerCase()
+  const matched = WORKOUT_KEYWORDS.some(kw => lower.includes(kw))
+  if (matched) {
+    const userId = getCurrentUser()
+    if (!userId) return
+    // Перевіряємо чи вже є тренування з цього джерела
+    const exists = query('SELECT id FROM workouts WHERE source_id = ?', [sourceId])
+    if (exists.length === 0) {
+      run('INSERT INTO workouts (id, date, title, calories_burned, source_id, user_id) VALUES (?,?,?,?,?,?)', 
+        [uid(), date, text.substring(0, 50), 300, sourceId, userId]) // 300 kcal як дефолт
+    } else {
+      run('UPDATE workouts SET title = ?, date = ? WHERE source_id = ?', [text.substring(0, 50), date, sourceId])
+    }
+  }
+}
+
+function removeWorkoutBySource(sourceId) {
+  run('DELETE FROM workouts WHERE source_id = ?', [sourceId])
+}
+
+
 // ─── Загальні CRUD ────────────────────────────────────────────────────────────
 
-/**
- * Повертає записи з колекції з опціональним фільтром (виконується в JS).
- * @param {'calories'|'weight'|'tasks'|'notes'} collection
- * @param {function|null} filterFn
- * @returns {Promise<Array>}
- */
 export async function getEntries(collection, filterFn = null) {
+  const userId = getCurrentUser()
   const table = TABLE[collection]
   if (!table) throw new Error(`[Storage] Невідома колекція: ${collection}`)
   const cols = SELECT_COLS[table] ?? '*'
-  const rows = query(`SELECT ${cols} FROM ${table} ORDER BY date DESC`, [])
-  // completed зберігається як 0/1 у SQLite — конвертуємо в boolean
+  const rows = query(`SELECT ${cols} FROM ${table} WHERE user_id = ? ORDER BY date DESC`, [userId])
   const normalized = rows.map(r => normalizeRow(collection, r))
   return filterFn ? normalized.filter(filterFn) : normalized
 }
 
-/**
- * Додає новий запис. Автоматично проставляє id та date (якщо не задані).
- * @param {'calories'|'weight'|'tasks'|'notes'} collection
- * @param {object} entry
- * @returns {Promise<object>} — збережений запис
- */
 export async function addEntry(collection, entry) {
-  const newEntry = {
-    id:   uid(),
-    date: todayStr(),
-    ...entry,
-  }
+  const userId = getCurrentUser()
+  const newEntry = { id: uid(), date: todayStr(), ...entry }
 
   switch (collection) {
     case 'calories':
       run(
-        `INSERT INTO calories (id, date, name, calories, protein, fat, carbs, photo)
-         VALUES (?,?,?,?,?,?,?,?)`,
-        [
-          newEntry.id, newEntry.date, newEntry.name ?? '',
-          Number(newEntry.calories) || 0,
-          Number(newEntry.protein)  || 0,
-          Number(newEntry.fat)      || 0,
-          Number(newEntry.carbs)    || 0,
-          newEntry.photo ?? null,
-        ]
+        `INSERT INTO calories (id, date, name, calories, protein, fat, carbs, photo, user_id) VALUES (?,?,?,?,?,?,?,?,?)`,
+        [newEntry.id, newEntry.date, newEntry.name ?? '', Number(newEntry.calories) || 0, Number(newEntry.protein) || 0, Number(newEntry.fat) || 0, Number(newEntry.carbs) || 0, newEntry.photo ?? null, userId]
       )
       break
-
     case 'weight':
       run(
-        `INSERT OR REPLACE INTO weight_log (id, date, weight) VALUES (?,?,?)`,
-        [newEntry.id, newEntry.date, Number(newEntry.weight ?? newEntry.val) || 0]
+        `INSERT OR REPLACE INTO weight_log (id, date, weight, user_id) VALUES (?,?,?,?)`,
+        [newEntry.id, newEntry.date, Number(newEntry.weight ?? newEntry.val) || 0, userId]
       )
       break
-
     case 'tasks':
       run(
-        `INSERT INTO tasks (id, date, title, completed) VALUES (?,?,?,?)`,
-        [newEntry.id, newEntry.date, newEntry.title ?? '', newEntry.completed ? 1 : 0]
+        `INSERT INTO tasks (id, date, title, completed, user_id) VALUES (?,?,?,?,?)`,
+        [newEntry.id, newEntry.date, newEntry.title ?? '', newEntry.completed ? 1 : 0, userId]
       )
+      detectWorkout(newEntry.title, newEntry.date, newEntry.id)
       break
-
     case 'notes':
       run(
-        `INSERT INTO notes (id, date, content) VALUES (?,?,?)`,
-        [newEntry.id, newEntry.date, newEntry.content ?? '']
+        `INSERT INTO notes (id, date, content, user_id) VALUES (?,?,?,?)`,
+        [newEntry.id, newEntry.date, newEntry.content ?? '', userId]
       )
+      detectWorkout(newEntry.content, newEntry.date, newEntry.id)
       break
-
     default:
       throw new Error(`[Storage] addEntry: невідома колекція "${collection}"`)
   }
@@ -116,47 +186,52 @@ export async function addEntry(collection, entry) {
   return newEntry
 }
 
-/**
- * Оновлює запис за id (часткове оновлення).
- * @param {'calories'|'weight'|'tasks'|'notes'} collection
- * @param {string} id
- * @param {object} updates
- * @returns {Promise<object|null>}
- */
 export async function updateEntry(collection, id, updates) {
+  const userId = getCurrentUser()
   switch (collection) {
     case 'calories': {
-      const fields = []
-      const vals   = []
+      const fields = [], vals = []
       const allowed = ['name', 'calories', 'protein', 'fat', 'carbs', 'photo', 'date']
       for (const [k, v] of Object.entries(updates)) {
         if (allowed.includes(k)) { fields.push(`${k} = ?`); vals.push(v) }
       }
       if (!fields.length) return null
-      vals.push(id)
-      run(`UPDATE calories SET ${fields.join(', ')} WHERE id = ?`, vals)
+      vals.push(id, userId)
+      run(`UPDATE calories SET ${fields.join(', ')} WHERE id = ? AND user_id = ?`, vals)
       break
     }
     case 'weight': {
       if (updates.weight !== undefined || updates.val !== undefined) {
-        run(`UPDATE weight_log SET weight = ? WHERE id = ?`,
-            [Number(updates.weight ?? updates.val), id])
+        run(`UPDATE weight_log SET weight = ? WHERE id = ? AND user_id = ?`, [Number(updates.weight ?? updates.val), id, userId])
       }
       break
     }
     case 'tasks': {
-      const fields = []
-      const vals   = []
-      if (updates.title     !== undefined) { fields.push('title = ?');     vals.push(updates.title) }
+      const fields = [], vals = []
+      if (updates.title !== undefined) { fields.push('title = ?'); vals.push(updates.title) }
       if (updates.completed !== undefined) { fields.push('completed = ?'); vals.push(updates.completed ? 1 : 0) }
+      if (updates.date !== undefined) { fields.push('date = ?'); vals.push(updates.date) }
       if (!fields.length) return null
-      vals.push(id)
-      run(`UPDATE tasks SET ${fields.join(', ')} WHERE id = ?`, vals)
+      vals.push(id, userId)
+      run(`UPDATE tasks SET ${fields.join(', ')} WHERE id = ? AND user_id = ?`, vals)
+      
+      const rows = query('SELECT title, date FROM tasks WHERE id = ?', [id])
+      if (rows.length) {
+        detectWorkout(rows[0].title, rows[0].date, id)
+      }
       break
     }
     case 'notes': {
-      if (updates.content !== undefined) {
-        run(`UPDATE notes SET content = ? WHERE id = ?`, [updates.content, id])
+      const fields = [], vals = []
+      if (updates.content !== undefined) { fields.push('content = ?'); vals.push(updates.content) }
+      if (updates.date !== undefined) { fields.push('date = ?'); vals.push(updates.date) }
+      if (!fields.length) return null
+      vals.push(id, userId)
+      run(`UPDATE notes SET ${fields.join(', ')} WHERE id = ? AND user_id = ?`, vals)
+      
+      const rows = query('SELECT content, date FROM notes WHERE id = ?', [id])
+      if (rows.length) {
+        detectWorkout(rows[0].content, rows[0].date, id)
       }
       break
     }
@@ -164,34 +239,30 @@ export async function updateEntry(collection, id, updates) {
       throw new Error(`[Storage] updateEntry: невідома колекція "${collection}"`)
   }
 
-  // Повертаємо оновлений запис
   const table = TABLE[collection]
   const cols  = SELECT_COLS[table] ?? '*'
-  const rows  = query(`SELECT ${cols} FROM ${table} WHERE id = ?`, [id])
+  const rows  = query(`SELECT ${cols} FROM ${table} WHERE id = ? AND user_id = ?`, [id, userId])
   return rows.length ? normalizeRow(collection, rows[0]) : null
 }
 
-/**
- * Видаляє запис за id.
- * @param {'calories'|'weight'|'tasks'|'notes'} collection
- * @param {string} id
- * @returns {Promise<boolean>}
- */
 export async function deleteEntry(collection, id) {
+  const userId = getCurrentUser()
   const table = TABLE[collection]
   if (!table) throw new Error(`[Storage] deleteEntry: невідома колекція "${collection}"`)
-  run(`DELETE FROM ${table} WHERE id = ?`, [id])
+  run(`DELETE FROM ${table} WHERE id = ? AND user_id = ?`, [id, userId])
+  if (collection === 'tasks' || collection === 'notes') {
+    removeWorkoutBySource(id)
+  }
   return true
 }
 
+
 // ─── Settings ─────────────────────────────────────────────────────────────────
 
-/**
- * Повертає об'єкт налаштувань.
- * @returns {Promise<object>}
- */
 export async function getSettings() {
-  const rows = query('SELECT key, value FROM settings', [])
+  const userId = getCurrentUser()
+  if (!userId) return { theme: 'dark', geminiKey: '', goals: { calories: 2200, protein: 120, fat: 70, carbs: 250 } }
+  const rows = query('SELECT key, value FROM settings WHERE user_id = ?', [userId])
   const map  = Object.fromEntries(rows.map(r => [r.key, r.value]))
   return {
     theme:     map.theme     ?? 'dark',
@@ -203,118 +274,75 @@ export async function getSettings() {
   }
 }
 
-/**
- * Часткове оновлення налаштувань.
- * @param {object} patch
- * @returns {Promise<object>} — нові налаштування
- */
 export async function updateSettings(patch) {
+  const userId = getCurrentUser()
+  if (!userId) return getSettings()
   if (patch.theme !== undefined) {
-    run(`INSERT OR REPLACE INTO settings (key, value) VALUES ('theme', ?)`, [patch.theme])
+    run(`INSERT OR REPLACE INTO settings (key, value, user_id) VALUES ('theme', ?, ?)`, [patch.theme, userId])
   }
   if (patch.geminiKey !== undefined) {
-    run(`INSERT OR REPLACE INTO settings (key, value) VALUES ('geminiKey', ?)`, [patch.geminiKey])
+    run(`INSERT OR REPLACE INTO settings (key, value, user_id) VALUES ('geminiKey', ?, ?)`, [patch.geminiKey, userId])
   }
   if (patch.goals !== undefined) {
     const cur = await getSettings()
     const merged = { ...cur.goals, ...patch.goals }
-    run(
-      `INSERT OR REPLACE INTO settings (key, value) VALUES ('goals', ?)`,
-      [JSON.stringify(merged)]
-    )
+    run(`INSERT OR REPLACE INTO settings (key, value, user_id) VALUES ('goals', ?, ?)`, [JSON.stringify(merged), userId])
   }
   return getSettings()
 }
 
 // ─── Habits ───────────────────────────────────────────────────────────────────
 
-/**
- * Повертає масив визначень звичок.
- * @returns {Promise<Array>}
- */
 export async function getHabitDefs() {
-  return query('SELECT id, name, target_per_week as targetPerWeek FROM habit_defs', [])
+  const userId = getCurrentUser()
+  return query('SELECT id, name, target_per_week as targetPerWeek FROM habit_defs WHERE user_id = ? OR user_id = "default"', [userId])
 }
 
-/**
- * Повертає лог звичок (з опціональним фільтром по даті від).
- * @param {string|null} fromDate — 'YYYY-MM-DD', включно
- * @returns {Promise<Array>}
- */
 export async function getHabitLog(fromDate = null) {
+  const userId = getCurrentUser()
   if (fromDate) {
-    return query(
-      `SELECT id, date, habit_id as habitId FROM habit_log WHERE date >= ? ORDER BY date DESC`,
-      [fromDate]
-    )
+    return query(`SELECT id, date, habit_id as habitId FROM habit_log WHERE date >= ? AND user_id = ? ORDER BY date DESC`, [fromDate, userId])
   }
-  return query('SELECT id, date, habit_id as habitId FROM habit_log ORDER BY date DESC', [])
+  return query('SELECT id, date, habit_id as habitId FROM habit_log WHERE user_id = ? ORDER BY date DESC', [userId])
 }
 
-/**
- * Перемикає виконання звички на сьогодні.
- * @param {string} habitId
- * @param {boolean} done
- * @returns {Promise<void>}
- */
 export async function toggleHabit(habitId, done) {
+  const userId = getCurrentUser()
   const today = todayStr()
   if (done) {
-    // Перевіряємо чи вже є запис
-    const exists = query(
-      'SELECT id FROM habit_log WHERE date = ? AND habit_id = ?',
-      [today, habitId]
-    )
+    const exists = query('SELECT id FROM habit_log WHERE date = ? AND habit_id = ? AND user_id = ?', [today, habitId, userId])
     if (!exists.length) {
-      run(
-        'INSERT INTO habit_log (id, date, habit_id) VALUES (?,?,?)',
-        [uid(), today, habitId]
-      )
+      run('INSERT INTO habit_log (id, date, habit_id, user_id) VALUES (?,?,?,?)', [uid(), today, habitId, userId])
     }
   } else {
-    run('DELETE FROM habit_log WHERE date = ? AND habit_id = ?', [today, habitId])
+    run('DELETE FROM habit_log WHERE date = ? AND habit_id = ? AND user_id = ?', [today, habitId, userId])
   }
 }
 
 // ─── Аналітика ───────────────────────────────────────────────────────────────
 
-/**
- * Повертає записи харчування за конкретну дату.
- * @param {string} date — 'YYYY-MM-DD'
- * @returns {Promise<Array>}
- */
 export async function getCaloriesByDate(date) {
-  const rows = query(
-    'SELECT id, date, name, calories, protein, fat, carbs, photo FROM calories WHERE date = ? ORDER BY rowid ASC',
-    [date]
-  )
-  return rows
+  const userId = getCurrentUser()
+  return query('SELECT id, date, name, calories, protein, fat, carbs, photo FROM calories WHERE date = ? AND user_id = ? ORDER BY rowid ASC', [date, userId])
 }
 
-/**
- * Повертає суму калорій та макросів за день.
- * @param {string} date — 'YYYY-MM-DD'
- * @returns {Promise<{calories, protein, fat, carbs}>}
- */
 export async function getDayTotals(date) {
+  const userId = getCurrentUser()
   const rows = query(
     `SELECT
        COALESCE(SUM(calories),0) as calories,
        COALESCE(SUM(protein),0)  as protein,
        COALESCE(SUM(fat),0)      as fat,
        COALESCE(SUM(carbs),0)    as carbs
-     FROM calories WHERE date = ?`,
-    [date]
+     FROM calories WHERE date = ? AND user_id = ?`,
+    [date, userId]
   )
   return rows[0] ?? { calories: 0, protein: 0, fat: 0, carbs: 0 }
 }
 
-/**
- * Кількість днів поспіль з хоча б одним записом харчування.
- * @returns {Promise<number>}
- */
 export async function computeStreak() {
-  const rows = query('SELECT DISTINCT date FROM calories ORDER BY date DESC', [])
+  const userId = getCurrentUser()
+  const rows = query('SELECT DISTINCT date FROM calories WHERE user_id = ? ORDER BY date DESC', [userId])
   const days = new Set(rows.map(r => r.date))
   let streak = 0
   const d = new Date()
@@ -330,34 +358,57 @@ export async function computeStreak() {
   return streak
 }
 
+// ─── Activity & Workouts ─────────────────────────────────────────────────────
+
+export async function getActivityLog(date = null) {
+  const userId = getCurrentUser()
+  if (date) {
+    const rows = query('SELECT * FROM activity_log WHERE date = ? AND user_id = ?', [date, userId])
+    return rows[0] ?? { steps: 0, distance: 0, running_distance: 0 }
+  }
+  return query('SELECT * FROM activity_log WHERE user_id = ? ORDER BY date DESC', [userId])
+}
+
+export async function logActivity(date, steps, distance, runningDistance) {
+  const userId = getCurrentUser()
+  const exists = query('SELECT id FROM activity_log WHERE date = ? AND user_id = ?', [date, userId])
+  if (exists.length) {
+    run('UPDATE activity_log SET steps = ?, distance = ?, running_distance = ? WHERE id = ?', 
+      [steps, distance, runningDistance, exists[0].id])
+  } else {
+    run('INSERT INTO activity_log (id, date, steps, distance, running_distance, user_id) VALUES (?,?,?,?,?,?)', 
+      [uid(), date, steps, distance, runningDistance, userId])
+  }
+}
+
+export async function getWorkouts(fromDate = null) {
+  const userId = getCurrentUser()
+  if (fromDate) {
+    return query('SELECT * FROM workouts WHERE date >= ? AND user_id = ? ORDER BY date DESC', [fromDate, userId])
+  }
+  return query('SELECT * FROM workouts WHERE user_id = ? ORDER BY date DESC', [userId])
+}
+
 // ─── Експорт / Імпорт ────────────────────────────────────────────────────────
 
-/**
- * Повний дамп всіх даних у вигляді JSON-об'єкта.
- * @returns {Promise<object>}
- */
 async function dumpAll() {
+  const userId = getCurrentUser()
   const habitDefsRaw = await getHabitDefs()
   const habitLogRaw  = await getHabitLog()
   const settings     = await getSettings()
   return {
-    calories: query('SELECT * FROM calories ORDER BY date ASC', []),
-    weight:   query('SELECT id, date, weight FROM weight_log ORDER BY date ASC', []),
-    tasks:    query('SELECT id, date, title, completed FROM tasks ORDER BY date ASC', [])
+    calories: query('SELECT * FROM calories WHERE user_id = ? ORDER BY date ASC', [userId]),
+    weight:   query('SELECT id, date, weight FROM weight_log WHERE user_id = ? ORDER BY date ASC', [userId]),
+    tasks:    query('SELECT id, date, title, completed FROM tasks WHERE user_id = ? ORDER BY date ASC', [userId])
               .map(r => ({ ...r, completed: r.completed === 1 })),
-    notes:    query('SELECT * FROM notes ORDER BY date ASC', []),
-    habits: {
-      defs: habitDefsRaw,
-      log:  habitLogRaw,
-    },
+    notes:    query('SELECT * FROM notes WHERE user_id = ? ORDER BY date ASC', [userId]),
+    activity: query('SELECT * FROM activity_log WHERE user_id = ? ORDER BY date ASC', [userId]),
+    workouts: query('SELECT * FROM workouts WHERE user_id = ? ORDER BY date ASC', [userId]),
+    habits: { defs: habitDefsRaw, log: habitLogRaw },
     settings,
   }
 }
 
-/**
- * Завантажує файл lifetracker-backup.json через Blob.
- * @returns {Promise<boolean>}
- */
 export async function exportData() {
   try {
     const data   = await dumpAll()
@@ -378,18 +429,15 @@ export async function exportData() {
   }
 }
 
-// Обов'язкові поля файлу резервної копії
 const REQUIRED_FIELDS = ['calories', 'weight', 'tasks', 'notes', 'habits', 'settings']
 
-/**
- * Імпортує дані з JSON-файлу у SQLite (замінює поточні дані).
- * @param {File} file
- * @returns {Promise<{ok:boolean, message:string}>}
- */
 export async function importData(file) {
   if (!file || file.type !== 'application/json') {
     return { ok: false, message: 'Файл повинен бути у форматі JSON (.json).' }
   }
+
+  const userId = getCurrentUser()
+  if (!userId) return { ok: false, message: 'Not logged in' }
 
   return new Promise((resolve) => {
     const reader = new FileReader()
@@ -397,131 +445,61 @@ export async function importData(file) {
     reader.onload = async (e) => {
       try {
         const parsed = JSON.parse(e.target.result)
+        const hasAll = REQUIRED_FIELDS.every(f => Object.hasOwn(parsed, f))
+        if (!hasAll) throw new Error('Невірний формат бекапу (відсутні необхідні поля).')
 
-        // Перевірка обов'язкових полів
-        const missing = REQUIRED_FIELDS.filter(f => !(f in parsed))
-        if (missing.length) {
-          return resolve({
-            ok: false,
-            message: `Файл пошкоджений. Відсутні поля: ${missing.join(', ')}.`,
-          })
-        }
+        // Clear current user's data
+        run('DELETE FROM calories WHERE user_id = ?', [userId])
+        run('DELETE FROM weight_log WHERE user_id = ?', [userId])
+        run('DELETE FROM tasks WHERE user_id = ?', [userId])
+        run('DELETE FROM notes WHERE user_id = ?', [userId])
+        run('DELETE FROM habit_log WHERE user_id = ?', [userId])
+        run('DELETE FROM activity_log WHERE user_id = ?', [userId])
+        run('DELETE FROM workouts WHERE user_id = ?', [userId])
 
-        const arrayFields = ['calories', 'weight', 'tasks', 'notes']
-        for (const f of arrayFields) {
-          if (!Array.isArray(parsed[f])) {
-            return resolve({ ok: false, message: `Поле "${f}" повинно бути масивом.` })
-          }
+        // Insert new data
+        parsed.calories.forEach(c => run(`INSERT INTO calories (id, date, name, calories, protein, fat, carbs, photo, user_id) VALUES (?,?,?,?,?,?,?,?,?)`, [c.id, c.date, c.name, c.calories, c.protein, c.fat, c.carbs, c.photo ?? null, userId]))
+        parsed.weight.forEach(w => run(`INSERT INTO weight_log (id, date, weight, user_id) VALUES (?,?,?,?)`, [w.id, w.date, w.weight, userId]))
+        parsed.tasks.forEach(t => run(`INSERT INTO tasks (id, date, title, completed, user_id) VALUES (?,?,?,?,?)`, [t.id, t.date, t.title, t.completed ? 1 : 0, userId]))
+        parsed.notes.forEach(n => run(`INSERT INTO notes (id, date, content, user_id) VALUES (?,?,?,?)`, [n.id, n.date, n.content, userId]))
+        
+        if (parsed.activity) {
+          parsed.activity.forEach(a => run(`INSERT INTO activity_log (id, date, steps, distance, running_distance, user_id) VALUES (?,?,?,?,?,?)`, [a.id, a.date, a.steps, a.distance, a.running_distance, userId]))
         }
-
-        if (!Array.isArray(parsed.habits?.defs) || !Array.isArray(parsed.habits?.log)) {
-          return resolve({ ok: false, message: 'habits.defs та habits.log повинні бути масивами.' })
-        }
-
-        if (typeof parsed.settings !== 'object' || typeof parsed.settings.goals !== 'object') {
-          return resolve({ ok: false, message: 'settings.goals повинен бути об\'єктом.' })
-        }
-
-        // Очищаємо поточні дані
-        run('DELETE FROM calories',   [])
-        run('DELETE FROM weight_log', [])
-        run('DELETE FROM tasks',      [])
-        run('DELETE FROM notes',      [])
-        run('DELETE FROM habit_log',  [])
-        run('DELETE FROM habit_defs', [])
-        run('DELETE FROM settings',   [])
-
-        // Вставляємо імпортовані дані
-        for (const e of parsed.calories) {
-          run(
-            `INSERT INTO calories (id,date,name,calories,protein,fat,carbs,photo) VALUES (?,?,?,?,?,?,?,?)`,
-            [e.id??uid(), e.date, e.name??'', Number(e.calories)||0, Number(e.protein)||0,
-             Number(e.fat)||0, Number(e.carbs)||0, e.photo??null]
-          )
-        }
-        for (const e of parsed.weight) {
-          run(
-            `INSERT OR REPLACE INTO weight_log (id,date,weight) VALUES (?,?,?)`,
-            [e.id??uid(), e.date, Number(e.weight)||0]
-          )
-        }
-        for (const e of parsed.tasks) {
-          run(
-            `INSERT INTO tasks (id,date,title,completed) VALUES (?,?,?,?)`,
-            [e.id??uid(), e.date, e.title??'', e.completed?1:0]
-          )
-        }
-        for (const e of parsed.notes) {
-          run(
-            `INSERT INTO notes (id,date,content) VALUES (?,?,?)`,
-            [e.id??uid(), e.date, e.content??'']
-          )
-        }
-        for (const h of parsed.habits.defs) {
-          run(
-            `INSERT INTO habit_defs (id,name,target_per_week) VALUES (?,?,?)`,
-            [h.id??uid(), h.name??'', Number(h.targetPerWeek??h.target_per_week)||3]
-          )
-        }
-        for (const l of parsed.habits.log) {
-          run(
-            `INSERT INTO habit_log (id,date,habit_id) VALUES (?,?,?)`,
-            [uid(), l.date, l.habitId??l.habit_id??'']
-          )
+        if (parsed.workouts) {
+          parsed.workouts.forEach(w => run(`INSERT INTO workouts (id, date, title, calories_burned, source_id, user_id) VALUES (?,?,?,?,?,?)`, [w.id, w.date, w.title, w.calories_burned, w.source_id, userId]))
         }
 
-        const s = parsed.settings
-        run(`INSERT OR REPLACE INTO settings (key,value) VALUES ('theme',?)`,     [s.theme??'dark'])
-        run(`INSERT OR REPLACE INTO settings (key,value) VALUES ('geminiKey',?)`, [s.geminiKey??''])
-        run(
-          `INSERT OR REPLACE INTO settings (key,value) VALUES ('goals',?)`,
-          [typeof s.goals === 'string' ? s.goals : JSON.stringify(s.goals)]
-        )
+        parsed.habits.log.forEach(l => run(`INSERT INTO habit_log (id, date, habit_id, user_id) VALUES (?,?,?,?)`, [l.id ?? uid(), l.date, l.habitId ?? l.habit_id, userId]))
 
-        resolve({ ok: true, message: 'Дані успішно імпортовано!' })
+        resolve({ ok: true, message: 'Дані успішно відновлено.' })
       } catch (err) {
-        resolve({ ok: false, message: 'Не вдалося прочитати файл: ' + err.message })
+        console.error('[Storage] Import failed:', err)
+        resolve({ ok: false, message: 'Помилка при читанні файлу: ' + err.message })
       }
     }
 
-    reader.onerror = () => resolve({ ok: false, message: 'Помилка читання файлу.' })
+    reader.onerror = () => {
+      resolve({ ok: false, message: 'Не вдалося прочитати файл.' })
+    }
+
     reader.readAsText(file)
   })
 }
 
-/**
- * Очищає всі дані (скидає до стану після seed).
- * @returns {Promise<boolean>}
- */
-export async function clearData() {
+export async function resetData() {
+  const userId = getCurrentUser()
+  if (!userId) return false
   try {
-    run('DELETE FROM calories',   [])
-    run('DELETE FROM weight_log', [])
-    run('DELETE FROM tasks',      [])
-    run('DELETE FROM notes',      [])
-    run('DELETE FROM habit_log',  [])
-    run('DELETE FROM settings',   [])
-    // Seed дефолтних налаштувань
-    run(`INSERT OR IGNORE INTO settings (key, value) VALUES ('theme',     'dark')`,   [])
-    run(`INSERT OR IGNORE INTO settings (key, value) VALUES ('geminiKey', '')`,       [])
-    run(`INSERT OR IGNORE INTO settings (key, value) VALUES ('goals', ?)`,
-        [JSON.stringify({ calories: 2200, protein: 120, fat: 70, carbs: 250 })])
+    run('DELETE FROM calories WHERE user_id = ?', [userId])
+    run('DELETE FROM weight_log WHERE user_id = ?', [userId])
+    run('DELETE FROM tasks WHERE user_id = ?', [userId])
+    run('DELETE FROM notes WHERE user_id = ?', [userId])
+    run('DELETE FROM habit_log WHERE user_id = ?', [userId])
+    run('DELETE FROM activity_log WHERE user_id = ?', [userId])
+    run('DELETE FROM workouts WHERE user_id = ?', [userId])
     return true
-  } catch (err) {
-    console.error('[Storage] clearData failed:', err)
+  } catch(e) {
     return false
   }
 }
-
-// ─── Внутрішній helper ────────────────────────────────────────────────────────
-function normalizeRow(collection, row) {
-  if (collection === 'tasks') {
-    return { ...row, completed: row.completed === 1 || row.completed === true }
-  }
-  return row
-}
-
-// ─── saveData / loadData — сумісність (не рекомендовано для прямого використання) ──
-// Залишені як no-op щоб уникнути крашів якщо десь залишились старі виклики
-export const saveData = async () => true
-export const loadData = async () => ({})
