@@ -1,6 +1,6 @@
 import { useRef, useState, useEffect } from 'react'
 import { Moon, Sun, Monitor, Download, Upload, Trash2, Info, ChevronRight, Palette, Database, ShieldAlert, Heart, Activity } from 'lucide-react'
-import { exportData, importData, clearData, getSettings, updateSettings } from '../../utils/storage'
+import { exportData, importData, resetData, getSettings, updateSettings } from '../../utils/storage'
 
 // Helper for classes
 function clsx(...args) { return args.filter(Boolean).join(' ') }
@@ -142,7 +142,7 @@ export default function SettingsPage() {
 
   async function handleReset() {
     if (!confirm('Видалити ВСІ дані LifeTracker? Цю дію неможливо скасувати.')) return
-    await clearData()
+    await resetData()
     const s = await getSettings()
     if (s.theme) handleThemeChange(s.theme)
     if (s.goals) setGoals(s.goals)
