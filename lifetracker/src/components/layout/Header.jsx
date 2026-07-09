@@ -58,23 +58,6 @@ function DateBadge({ weekday, dateStr, isoDate }) {
   )
 }
 
-// ─── Notification Button ──────────────────────────────────────────────────────
-function NotifButton() {
-  return (
-    <button
-      id="header-notifications"
-      aria-label="Notifications — 2 unread"
-      className="icon-btn relative"
-    >
-      <Bell size={17} />
-      <span
-        className="absolute top-1 right-1 w-2 h-2 rounded-full border pulse-glow"
-        style={{ background: 'var(--pink)', borderColor: 'var(--bg-panel)' }}
-        aria-hidden="true"
-      />
-    </button>
-  )
-}
 
 // ─── Add Button ───────────────────────────────────────────────────────────────
 function AddButton() {
@@ -176,7 +159,6 @@ export default function Header({ onMenuOpen }) {
       {/* ── Right zone ── */}
       <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
         <Search />
-        <NotifButton />
         <AddButton />
         <div className="hidden sm:block w-px h-5" style={{ background: 'var(--border)' }} aria-hidden="true" />
         <Avatar />

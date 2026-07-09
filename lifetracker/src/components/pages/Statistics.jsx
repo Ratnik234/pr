@@ -13,7 +13,7 @@ import {
   Legend,
 } from 'chart.js'
 import { Line, Bar } from 'react-chartjs-2'
-import { getDayTotals, computeStreak, getSettings, getEntries, addEntry, updateEntry, todayStr } from '../../utils/storage'
+import { getDayTotals, computeStreak, getSettings, getEntries, addEntry, updateEntry, todayStr, getActivityLog, logActivity, getWorkouts } from '../../utils/storage'
 
 // Register Chart.js components
 ChartJS.register(
@@ -95,6 +95,15 @@ export default function StatisticsPage() {
   const [streak,        setStreak]        = useState(0)
   const [totalWeekCal,  setTotalWeekCal]  = useState(0)
   const [newWeight,     setNewWeight]     = useState('')
+  
+  // Activity state
+  const [activityData, setActivityData] = useState({ steps: 0, distance: 0, running_distance: 0 })
+  const [workouts, setWorkouts] = useState([])
+  
+  // Activity form
+  const [formSteps, setFormSteps] = useState('')
+  const [formDist, setFormDist] = useState('')
+  const [formRun, setFormRun] = useState('')
 
   useEffect(() => { loadData() }, [])  // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -125,6 +134,26 @@ export default function StatisticsPage() {
       return lastWeight
     })
     setWeightData({ labels: days.map(shortDay), values: wValues })
+
+    // Activity & Workouts
+    const todayAct = await getActivityLog(todayStr())
+    setActivityData(todayAct)
+    setFormSteps(todayAct.steps || '')
+    setFormDist(todayAct.distance || '')
+    setFormRun(todayAct.running_distance || '')
+
+    const allWorkouts = await getWorkouts()
+    setWorkouts(allWorkouts)
+  }
+
+  async function handleLogActivity() {
+    await logActivity(
+      todayStr(),
+      parseInt(formSteps) || 0,
+      parseFloat(formDist) || 0,
+      parseFloat(formRun) || 0
+    )
+    loadData()
   }
 
   async function handleAddWeight() {
@@ -253,6 +282,41 @@ export default function StatisticsPage() {
           <StatCard title="Daily Goal"       value={weeklyData.calorieLimit}                               subtitle="kcal target / day"          trend={0}              Icon={CheckSquare}   gradientClass="bg-gradient-to-br from-sky-400 to-blue-600"       delay="anim-delay-3" />
           <StatCard title="Days Tracked"     value={weeklyData.values.filter(v => v > 0).length}           subtitle="Out of last 7 days"         trend={18}             Icon={Trophy}        gradientClass="bg-gradient-to-br from-amber-400 to-orange-500"   delay="anim-delay-4" />
         </div>
+
+        {/* Activity & Workouts Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+          <StatCard title="Total Workouts"   value={workouts.length}                                       subtitle="Automatically tracked"      trend={0}              Icon={Trophy}        gradientClass="bg-gradient-to-br from-indigo-400 to-purple-600"  delay="anim-delay-2" />
+          <StatCard title="Workout Calories" value={workouts.reduce((a, b) => a + b.calories_burned, 0).toLocaleString()} subtitle="Burned in total"       trend={0}              Icon={Flame}         gradientClass="bg-gradient-to-br from-red-400 to-orange-500"     delay="anim-delay-3" />
+          <StatCard title="Today's Steps"    value={activityData.steps.toLocaleString()}                   subtitle="Step count today"           trend={0}              Icon={ArrowUp}       gradientClass="bg-gradient-to-br from-emerald-400 to-teal-500"   delay="anim-delay-4" />
+          <StatCard title="Today's Distance" value={`${activityData.distance} km`}                         subtitle={`Run: ${activityData.running_distance} km`} trend={0}      Icon={ArrowDown}     gradientClass="bg-gradient-to-br from-cyan-400 to-blue-500"      delay="anim-delay-5" />
+        </div>
+
+        {/* Activity Input */}
+        <section aria-labelledby="activity-heading" className="glass-card p-6 anim-up anim-delay-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-4 border-b pb-4" style={{ borderColor: 'var(--border)' }}>
+            <div>
+              <h2 id="activity-heading" className="text-lg font-bold tracking-tight" style={{ color: 'var(--t-1)' }}>Activity Tracker</h2>
+              <p className="text-[13px] mt-0.5" style={{ color: 'var(--t-3)' }}>Log your daily steps and distance manually.</p>
+            </div>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
+            <div>
+              <label className="block text-[12px] font-bold uppercase tracking-wider mb-1.5" style={{ color: 'var(--t-2)' }}>Steps</label>
+              <input type="number" value={formSteps} onChange={(e) => setFormSteps(e.target.value)} placeholder="0" className="w-full px-3 py-2 rounded-lg text-sm focus:outline-none focus:border-indigo-500" style={{ background: 'var(--bg-raised)', border: '1px solid var(--border)', color: 'var(--t-1)' }} />
+            </div>
+            <div>
+              <label className="block text-[12px] font-bold uppercase tracking-wider mb-1.5" style={{ color: 'var(--t-2)' }}>Distance (km)</label>
+              <input type="number" step="0.1" value={formDist} onChange={(e) => setFormDist(e.target.value)} placeholder="0" className="w-full px-3 py-2 rounded-lg text-sm focus:outline-none focus:border-indigo-500" style={{ background: 'var(--bg-raised)', border: '1px solid var(--border)', color: 'var(--t-1)' }} />
+            </div>
+            <div>
+              <label className="block text-[12px] font-bold uppercase tracking-wider mb-1.5" style={{ color: 'var(--t-2)' }}>Running (km)</label>
+              <input type="number" step="0.1" value={formRun} onChange={(e) => setFormRun(e.target.value)} placeholder="0" className="w-full px-3 py-2 rounded-lg text-sm focus:outline-none focus:border-indigo-500" style={{ background: 'var(--bg-raised)', border: '1px solid var(--border)', color: 'var(--t-1)' }} />
+            </div>
+          </div>
+          <button onClick={handleLogActivity} className="btn-primary px-5 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2">
+            <Plus size={16} /> Save Activity
+          </button>
+        </section>
 
         {/* Weight Tracking */}
         <section aria-labelledby="weight-heading" className="glass-card p-6 anim-up anim-delay-5">
