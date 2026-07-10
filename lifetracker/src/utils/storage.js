@@ -128,7 +128,7 @@ export function triggerSync() {
       const queue = await db.getAll('sync_queue');
       if (queue.length === 0) return;
 
-      const res = await fetch(`${API_URL}/sync`, {
+      const res = await fetch(`${API_URL}/api/sync`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ userId, operations: queue })
@@ -153,7 +153,7 @@ export async function performFullSync() {
   const userId = getCurrentUser();
   if (!userId || !navigator.onLine) return;
   try {
-    const res = await fetch(`${API_URL}/sync/pull`, {
+    const res = await fetch(`${API_URL}/api/sync/pull`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ userId })
@@ -415,7 +415,7 @@ export async function importData(file) {
         }
 
         // Trigger bulk sync to server
-        await fetch(`${API_URL}/sync/push`, {
+        await fetch(`${API_URL}/api/sync/push`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ userId, data: parsed })
