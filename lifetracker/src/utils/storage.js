@@ -1,568 +1,443 @@
-/**
- * src/utils/storage.js
- * ─────────────────────────────────────────────────────────────────────────────
- * LifeTracker — API для роботи з даними (SQLite).
- *
- * Колекції:
- *   'calories'   → таблиця calories
- *   'weight'     → таблиця weight_log
- *   'tasks'      → таблиця tasks
- *   'notes'      → таблиця notes
- */
+import { openDB } from 'idb';
 
-import { run, query } from './db'
+const API_URL = 'http://localhost:3001/api';
 
-// ─── Helpers ──────────────────────────────────────────────────────────────────
+let dbPromise;
+export async function getDB() {
+  if (!dbPromise) {
+    dbPromise = openDB('lifetracker-neon', 1, {
+      upgrade(db) {
+        if (!db.objectStoreNames.contains('calories')) db.createObjectStore('calories', { keyPath: 'id' });
+        if (!db.objectStoreNames.contains('weight')) db.createObjectStore('weight', { keyPath: 'id' });
+        if (!db.objectStoreNames.contains('tasks')) db.createObjectStore('tasks', { keyPath: 'id' });
+        if (!db.objectStoreNames.contains('notes')) db.createObjectStore('notes', { keyPath: 'id' });
+        if (!db.objectStoreNames.contains('habits_defs')) db.createObjectStore('habits_defs', { keyPath: 'id' });
+        if (!db.objectStoreNames.contains('habit_log')) db.createObjectStore('habit_log', { keyPath: 'id' });
+        if (!db.objectStoreNames.contains('settings')) db.createObjectStore('settings', { keyPath: 'key' });
+        if (!db.objectStoreNames.contains('activity')) db.createObjectStore('activity', { keyPath: 'id' });
+        if (!db.objectStoreNames.contains('workouts')) db.createObjectStore('workouts', { keyPath: 'id' });
+        if (!db.objectStoreNames.contains('sync_queue')) db.createObjectStore('sync_queue', { keyPath: 'id', autoIncrement: true });
+      }
+    });
+  }
+  return dbPromise;
+}
 
 export function uid() {
-  return Date.now().toString(36) + Math.random().toString(36).slice(2, 7)
+  return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
 }
 
 export function todayStr() {
-  return new Date().toISOString().slice(0, 10)
-}
-
-// ─── Auth ─────────────────────────────────────────────────────────────────────
-
-async function hashPassword(password) {
-  const msgUint8 = new TextEncoder().encode(password)
-  const hashBuffer = await crypto.subtle.digest('SHA-256', msgUint8)
-  const hashArray = Array.from(new Uint8Array(hashBuffer))
-  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('')
+  return new Date().toISOString().slice(0, 10);
 }
 
 export function getCurrentUser() {
-  return localStorage.getItem('lifetracker_session')
+  return localStorage.getItem('lifetracker_session');
 }
 
-export function setCurrentUser(id) {
+export function setCurrentUser(id, username = null) {
   if (id) {
-    localStorage.setItem('lifetracker_session', id)
+    localStorage.setItem('lifetracker_session', id);
+    if (username) localStorage.setItem('lifetracker_username', username);
   } else {
-    localStorage.removeItem('lifetracker_session')
+    localStorage.removeItem('lifetracker_session');
+    localStorage.removeItem('lifetracker_username');
   }
 }
 
 export async function getCurrentUserInfo() {
-  const userId = getCurrentUser()
-  if (!userId) return null
-  const rows = query('SELECT username FROM users WHERE id = ?', [userId])
-  if (rows.length > 0) return rows[0]
-  return null
+  const id = getCurrentUser();
+  if (!id) return null;
+  const username = localStorage.getItem('lifetracker_username');
+  if (username) return { username };
+  
+  if (navigator.onLine) {
+    try {
+      const res = await fetch(`${API_URL}/users/${id}`);
+      const data = await res.json();
+      if (data.username) {
+        localStorage.setItem('lifetracker_username', data.username);
+        return { username: data.username };
+      }
+    } catch (e) {
+      console.warn('Could not fetch user info', e);
+    }
+  }
+  return { username: 'User' };
 }
 
 export async function loginUser(username, password) {
-  const hash = await hashPassword(password)
-  const rows = query('SELECT id FROM users WHERE username = ? AND password_hash = ?', [username, hash])
-  if (rows.length > 0) {
-    setCurrentUser(rows[0].id)
-    return { ok: true }
+  try {
+    const res = await fetch(`${API_URL}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password })
+    });
+    const data = await res.json();
+    if (data.ok) {
+      setCurrentUser(data.userId, username);
+      await performFullSync();
+      return { ok: true };
+    }
+    return { ok: false, message: data.message };
+  } catch (err) {
+    return { ok: false, message: 'No internet connection for login' };
   }
-  return { ok: false, message: 'Invalid username or password' }
 }
 
 export async function registerUser(username, password) {
-  const exists = query('SELECT id FROM users WHERE username = ?', [username])
-  if (exists.length > 0) {
-    return { ok: false, message: 'Username already exists' }
-  }
-
-  const hash = await hashPassword(password)
-  const userId = uid()
-  
-  // Перевіряємо, чи це перший користувач
-  const userCount = query('SELECT COUNT(*) as c FROM users')[0]?.c ?? 0
-  
-  run('INSERT INTO users (id, username, password_hash) VALUES (?,?,?)', [userId, username, hash])
-  
-  if (userCount === 0) {
-    // Міграція існуючих даних на першого користувача
-    const tables = ['calories', 'weight_log', 'tasks', 'notes', 'habit_defs', 'habit_log', 'settings', 'activity_log', 'workouts']
-    for (const table of tables) {
-      // Ігноруємо помилки якщо таблиця чомусь не існує або не має user_id
-      try {
-        run(`UPDATE ${table} SET user_id = ? WHERE user_id = 'default' OR user_id IS NULL`, [userId])
-      } catch(e) {}
+  try {
+    const res = await fetch(`${API_URL}/auth/register`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password })
+    });
+    const data = await res.json();
+    if (data.ok) {
+      setCurrentUser(data.userId, username);
+      return { ok: true };
     }
+    return { ok: false, message: data.message };
+  } catch (err) {
+    return { ok: false, message: 'No internet connection for registration' };
   }
-  
-  setCurrentUser(userId)
-  return { ok: true }
 }
 
 export function logoutUser() {
-  setCurrentUser(null)
+  setCurrentUser(null);
 }
 
-// ─── CRUD Config ──────────────────────────────────────────────────────────────
+// ─── Sync Logic ───────────────────────────────────────────────────────────────
 
-const TABLE = {
-  calories: 'calories',
-  weight:   'weight_log',
-  tasks:    'tasks',
-  notes:    'notes',
+export async function addSyncOp(op) {
+  const db = await getDB();
+  await db.add('sync_queue', op);
+  triggerSync();
 }
 
-const SELECT_COLS = {
-  calories:   'id, date, name, calories, protein, fat, carbs, photo',
-  weight_log: 'id, date, weight',
-  tasks:      'id, date, start_time, end_time, title, completed',
-  notes:      'id, date, content',
-}
+let syncTimeout = null;
+export function triggerSync() {
+  if (syncTimeout) clearTimeout(syncTimeout);
+  syncTimeout = setTimeout(async () => {
+    if (!navigator.onLine) return;
+    const userId = getCurrentUser();
+    if (!userId) return;
 
-function normalizeRow(collection, row) {
-  if (collection === 'tasks') {
-    return { ...row, completed: row.completed === 1 }
-  }
-  return row
-}
-
-// ─── Auto Workouts ────────────────────────────────────────────────────────────
-
-const WORKOUT_KEYWORDS = ['run', 'gym', 'workout', 'тренировка', 'пробежка', 'зарядка', 'фітнес', 'тренування']
-
-function detectWorkout(text, date, sourceId, start_time, end_time) {
-  if (!text) return
-  const lower = text.toLowerCase()
-  const matched = WORKOUT_KEYWORDS.some(kw => lower.includes(kw))
-  if (matched) {
-    const userId = getCurrentUser()
-    if (!userId) return
-    let durationMinutes = 30 // default 30 mins
-    if (start_time && end_time) {
-      const [sH, sM] = start_time.split(':').map(Number)
-      const [eH, eM] = end_time.split(':').map(Number)
-      if (!isNaN(sH) && !isNaN(sM) && !isNaN(eH) && !isNaN(eM)) {
-        durationMinutes = (eH * 60 + eM) - (sH * 60 + sM)
-        if (durationMinutes < 0) durationMinutes += 24 * 60
-      }
-    }
-
-    // Calculate calories dynamically based on user profile
-    let estimatedCalories = 300 // fallback
     try {
-      const rows = query('SELECT value FROM settings WHERE user_id = ? AND key = ?', [userId, 'profile'])
-      let profile = { weight: 70, height: 175, age: 30, gender: 'male' }
-      if (rows.length) {
-        const parsed = JSON.parse(rows[0].value)
-        profile = { ...profile, ...parsed }
-      }
-      
-      const weight = parseFloat(profile.weight) || 70
-      const height = parseFloat(profile.height) || 175
-      const age = parseFloat(profile.age) || 30
-      const isMale = profile.gender === 'male' || !profile.gender
-      
-      // Mifflin-St Jeor Equation for BMR
-      const bmr = (10 * weight) + (6.25 * height) - (5 * age) + (isMale ? 5 : -161)
-      const bmrPerMin = bmr / (24 * 60)
-      
-      // Assume MET = 6.0 for average workout
-      const MET = 6.0
-      estimatedCalories = Math.max(50, Math.round(bmrPerMin * MET * durationMinutes))
-    } catch(e) {
-      estimatedCalories = Math.max(50, Math.round(durationMinutes * 7))
-    }
+      const db = await getDB();
+      const queue = await db.getAll('sync_queue');
+      if (queue.length === 0) return;
 
-    const exists = query('SELECT id FROM workouts WHERE source_id = ?', [sourceId])
-    if (exists.length === 0) {
-      run('INSERT INTO workouts (id, date, title, calories_burned, source_id, user_id) VALUES (?,?,?,?,?,?)', 
-        [uid(), date, text.substring(0, 50), estimatedCalories, sourceId, userId])
-    } else {
-      run('UPDATE workouts SET title = ?, date = ?, calories_burned = ? WHERE source_id = ?', [text.substring(0, 50), date, estimatedCalories, sourceId])
+      const res = await fetch(`${API_URL}/sync`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId, operations: queue })
+      });
+      const data = await res.json();
+      if (data.ok) {
+        const tx = db.transaction('sync_queue', 'readwrite');
+        for (const op of queue) {
+          tx.store.delete(op.id);
+        }
+        await tx.done;
+      }
+    } catch (err) {
+      console.warn('Sync failed, will retry later:', err);
     }
+  }, 2000);
+}
+
+window.addEventListener('online', triggerSync);
+
+export async function performFullSync() {
+  const userId = getCurrentUser();
+  if (!userId || !navigator.onLine) return;
+  try {
+    const res = await fetch(`${API_URL}/sync/pull`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ userId })
+    });
+    const data = await res.json();
+    if (!data.error) {
+      const db = await getDB();
+      // Store all fetched data to local IndexedDB
+      if (data.calories) {
+        const tx = db.transaction('calories', 'readwrite');
+        tx.store.clear();
+        data.calories.forEach(item => tx.store.put(item));
+      }
+      if (data.tasks) {
+        const tx = db.transaction('tasks', 'readwrite');
+        tx.store.clear();
+        data.tasks.forEach(item => tx.store.put(item));
+      }
+      // Continue for other stores as needed...
+    }
+  } catch (e) {
+    console.warn('Pull sync failed', e);
   }
 }
 
-function removeWorkoutBySource(sourceId) {
-  run('DELETE FROM workouts WHERE source_id = ?', [sourceId])
-}
-
-
-// ─── Загальні CRUD ────────────────────────────────────────────────────────────
+// ─── CRUD ─────────────────────────────────────────────────────────────────────
 
 export async function getEntries(collection, filterFn = null) {
-  const userId = getCurrentUser()
-  const table = TABLE[collection]
-  if (!table) throw new Error(`[Storage] Невідома колекція: ${collection}`)
-  const cols = SELECT_COLS[table] ?? '*'
-  const rows = query(`SELECT ${cols} FROM ${table} WHERE user_id = ? ORDER BY date DESC`, [userId])
-  const normalized = rows.map(r => normalizeRow(collection, r))
-  return filterFn ? normalized.filter(filterFn) : normalized
+  const db = await getDB();
+  const all = await db.getAll(collection);
+  // Sort by date DESC
+  all.sort((a, b) => {
+    if (a.date && b.date) return b.date.localeCompare(a.date);
+    return 0;
+  });
+  return filterFn ? all.filter(filterFn) : all;
 }
 
 export async function addEntry(collection, entry) {
-  const userId = getCurrentUser()
-  const newEntry = { id: uid(), date: todayStr(), ...entry }
-
-  switch (collection) {
-    case 'calories':
-      run(
-        `INSERT INTO calories (id, date, name, calories, protein, fat, carbs, photo, user_id) VALUES (?,?,?,?,?,?,?,?,?)`,
-        [newEntry.id, newEntry.date, newEntry.name ?? '', Number(newEntry.calories) || 0, Number(newEntry.protein) || 0, Number(newEntry.fat) || 0, Number(newEntry.carbs) || 0, newEntry.photo ?? null, userId]
-      )
-      break
-    case 'weight':
-      run(
-        `INSERT OR REPLACE INTO weight_log (id, date, weight, user_id) VALUES (?,?,?,?)`,
-        [newEntry.id, newEntry.date, Number(newEntry.weight ?? newEntry.val) || 0, userId]
-      )
-      break
-    case 'tasks':
-      run(
-        `INSERT INTO tasks (id, date, start_time, end_time, title, completed, user_id) VALUES (?,?,?,?,?,?,?)`,
-        [newEntry.id, newEntry.date, newEntry.start_time ?? null, newEntry.end_time ?? null, newEntry.title ?? '', newEntry.completed ? 1 : 0, userId]
-      )
-      detectWorkout(newEntry.title, newEntry.date, newEntry.id, newEntry.start_time, newEntry.end_time)
-      break
-    case 'notes':
-      run(
-        `INSERT INTO notes (id, date, content, user_id) VALUES (?,?,?,?)`,
-        [newEntry.id, newEntry.date, newEntry.content ?? '', userId]
-      )
-      detectWorkout(newEntry.content, newEntry.date, newEntry.id)
-      break
-    default:
-      throw new Error(`[Storage] addEntry: невідома колекція "${collection}"`)
-  }
-
-  return newEntry
+  const db = await getDB();
+  const newEntry = { id: uid(), date: todayStr(), ...entry };
+  await db.put(collection, newEntry);
+  await addSyncOp({ type: 'CREATE', collection, data: newEntry });
+  return newEntry;
 }
 
 export async function updateEntry(collection, id, updates) {
-  const userId = getCurrentUser()
-  switch (collection) {
-    case 'calories': {
-      const fields = [], vals = []
-      const allowed = ['name', 'calories', 'protein', 'fat', 'carbs', 'photo', 'date']
-      for (const [k, v] of Object.entries(updates)) {
-        if (allowed.includes(k)) { fields.push(`${k} = ?`); vals.push(v) }
-      }
-      if (!fields.length) return null
-      vals.push(id, userId)
-      run(`UPDATE calories SET ${fields.join(', ')} WHERE id = ? AND user_id = ?`, vals)
-      break
-    }
-    case 'weight': {
-      if (updates.weight !== undefined || updates.val !== undefined) {
-        run(`UPDATE weight_log SET weight = ? WHERE id = ? AND user_id = ?`, [Number(updates.weight ?? updates.val), id, userId])
-      }
-      break
-    }
-    case 'tasks': {
-      const fields = [], vals = []
-      if (updates.title !== undefined) { fields.push('title = ?'); vals.push(updates.title) }
-      if (updates.completed !== undefined) { fields.push('completed = ?'); vals.push(updates.completed ? 1 : 0) }
-      if (updates.date !== undefined) { fields.push('date = ?'); vals.push(updates.date) }
-      if (updates.start_time !== undefined) { fields.push('start_time = ?'); vals.push(updates.start_time) }
-      if (updates.end_time !== undefined) { fields.push('end_time = ?'); vals.push(updates.end_time) }
-      if (!fields.length) return null
-      vals.push(id, userId)
-      run(`UPDATE tasks SET ${fields.join(', ')} WHERE id = ? AND user_id = ?`, vals)
-      
-      const rows = query('SELECT title, date, start_time, end_time FROM tasks WHERE id = ?', [id])
-      if (rows.length) {
-        detectWorkout(rows[0].title, rows[0].date, id, rows[0].start_time, rows[0].end_time)
-      }
-      break
-    }
-    case 'notes': {
-      const fields = [], vals = []
-      if (updates.content !== undefined) { fields.push('content = ?'); vals.push(updates.content) }
-      if (updates.date !== undefined) { fields.push('date = ?'); vals.push(updates.date) }
-      if (!fields.length) return null
-      vals.push(id, userId)
-      run(`UPDATE notes SET ${fields.join(', ')} WHERE id = ? AND user_id = ?`, vals)
-      
-      const rows = query('SELECT content, date FROM notes WHERE id = ?', [id])
-      if (rows.length) {
-        detectWorkout(rows[0].content, rows[0].date, id)
-      }
-      break
-    }
-    default:
-      throw new Error(`[Storage] updateEntry: невідома колекція "${collection}"`)
-  }
-
-  const table = TABLE[collection]
-  const cols  = SELECT_COLS[table] ?? '*'
-  const rows  = query(`SELECT ${cols} FROM ${table} WHERE id = ? AND user_id = ?`, [id, userId])
-  return rows.length ? normalizeRow(collection, rows[0]) : null
+  const db = await getDB();
+  const existing = await db.get(collection, id);
+  if (!existing) return null;
+  const updated = { ...existing, ...updates };
+  await db.put(collection, updated);
+  await addSyncOp({ type: 'UPDATE', collection, id, data: updates });
+  return updated;
 }
 
 export async function deleteEntry(collection, id) {
-  const userId = getCurrentUser()
-  const table = TABLE[collection]
-  if (!table) throw new Error(`[Storage] deleteEntry: невідома колекція "${collection}"`)
-  run(`DELETE FROM ${table} WHERE id = ? AND user_id = ?`, [id, userId])
-  if (collection === 'tasks' || collection === 'notes') {
-    removeWorkoutBySource(id)
-  }
-  return true
+  const db = await getDB();
+  await db.delete(collection, id);
+  await addSyncOp({ type: 'DELETE', collection, id });
+  return true;
 }
-
 
 // ─── Settings ─────────────────────────────────────────────────────────────────
 
 export async function getSettings() {
-  const userId = getCurrentUser()
-  if (!userId) return { theme: 'dark', geminiKey: '', goals: { calories: 2200, protein: 120, fat: 70, carbs: 250 } }
-  const rows = query('SELECT key, value FROM settings WHERE user_id = ?', [userId])
-  const map  = Object.fromEntries(rows.map(r => [r.key, r.value]))
+  const db = await getDB();
+  const all = await db.getAll('settings');
+  const map = Object.fromEntries(all.map(s => [s.key, s.value]));
+  
   return {
     theme:     map.theme     ?? 'dark',
     geminiKey: map.geminiKey ?? '',
     language:  map.language  ?? 'en',
-    goals: (() => {
-      try   { return JSON.parse(map.goals) }
-      catch { return { calories: 2200, protein: 120, fat: 70, carbs: 250 } }
-    })(),
-    waterLog: (() => {
-      try   { return JSON.parse(map.waterLog) }
-      catch { return {} }
-    })(),
-    profile: (() => {
-      try   { return JSON.parse(map.profile) }
-      catch { return { height: '', weight: '', age: '', gender: 'male', activityLevel: 'medium' } }
-    })(),
-  }
+    goals:     map.goals     ?? { calories: 2200, protein: 120, fat: 70, carbs: 250 },
+    waterLog:  map.waterLog  ?? {},
+    profile:   map.profile   ?? { height: '', weight: '', age: '', gender: 'male', activityLevel: 'medium' },
+  };
 }
 
 export async function updateSettings(patch) {
-  const userId = getCurrentUser()
-  if (!userId) return getSettings()
-  if (patch.theme !== undefined) {
-    run(`INSERT OR REPLACE INTO settings (key, value, user_id) VALUES ('theme', ?, ?)`, [patch.theme, userId])
+  const db = await getDB();
+  const tx = db.transaction('settings', 'readwrite');
+  for (const [k, v] of Object.entries(patch)) {
+    if (v !== undefined) {
+      if (k === 'goals') {
+        const existing = await tx.store.get('goals');
+        tx.store.put({ key: 'goals', value: { ...(existing?.value || {}), ...v } });
+      } else {
+        tx.store.put({ key: k, value: v });
+      }
+      await addSyncOp({ type: 'UPDATE_SETTING', key: k, value: v });
+    }
   }
-  if (patch.geminiKey !== undefined) {
-    run(`INSERT OR REPLACE INTO settings (key, value, user_id) VALUES ('geminiKey', ?, ?)`, [patch.geminiKey, userId])
-  }
-  if (patch.goals !== undefined) {
-    const cur = await getSettings()
-    const merged = { ...cur.goals, ...patch.goals }
-    run(`INSERT OR REPLACE INTO settings (key, value, user_id) VALUES ('goals', ?, ?)`, [JSON.stringify(merged), userId])
-  }
-  if (patch.waterLog !== undefined) {
-    run(`INSERT OR REPLACE INTO settings (key, value, user_id) VALUES ('waterLog', ?, ?)`, [JSON.stringify(patch.waterLog), userId])
-  }
-  if (patch.language !== undefined) {
-    run(`INSERT OR REPLACE INTO settings (key, value, user_id) VALUES ('language', ?, ?)`, [patch.language, userId])
-  }
-  if (patch.profile !== undefined) {
-    run(`INSERT OR REPLACE INTO settings (key, value, user_id) VALUES ('profile', ?, ?)`, [JSON.stringify(patch.profile), userId])
-  }
-  return getSettings()
+  await tx.done;
+  return getSettings();
 }
 
 // ─── Habits ───────────────────────────────────────────────────────────────────
 
 export async function getHabitDefs() {
-  const userId = getCurrentUser()
-  return query('SELECT id, name, target_per_week as targetPerWeek FROM habit_defs WHERE user_id = ? OR user_id = "default"', [userId])
+  const db = await getDB();
+  return db.getAll('habits_defs');
 }
 
 export async function getHabitLog(fromDate = null) {
-  const userId = getCurrentUser()
+  const db = await getDB();
+  const all = await db.getAll('habit_log');
   if (fromDate) {
-    return query(`SELECT id, date, habit_id as habitId FROM habit_log WHERE date >= ? AND user_id = ? ORDER BY date DESC`, [fromDate, userId])
+    return all.filter(l => l.date >= fromDate).sort((a,b) => b.date.localeCompare(a.date));
   }
-  return query('SELECT id, date, habit_id as habitId FROM habit_log WHERE user_id = ? ORDER BY date DESC', [userId])
+  return all.sort((a,b) => b.date.localeCompare(a.date));
 }
 
 export async function toggleHabit(habitId, done) {
-  const userId = getCurrentUser()
-  const today = todayStr()
-  if (done) {
-    const exists = query('SELECT id FROM habit_log WHERE date = ? AND habit_id = ? AND user_id = ?', [today, habitId, userId])
-    if (!exists.length) {
-      run('INSERT INTO habit_log (id, date, habit_id, user_id) VALUES (?,?,?,?)', [uid(), today, habitId, userId])
-    }
-  } else {
-    run('DELETE FROM habit_log WHERE date = ? AND habit_id = ? AND user_id = ?', [today, habitId, userId])
+  const db = await getDB();
+  const today = todayStr();
+  const logs = await db.getAll('habit_log');
+  const existing = logs.find(l => l.date === today && (l.habitId === habitId || l.habit_id === habitId));
+  
+  if (done && !existing) {
+    const entry = { id: uid(), date: today, habitId };
+    await db.put('habit_log', entry);
+    await addSyncOp({ type: 'CREATE', collection: 'habit_log', data: entry });
+  } else if (!done && existing) {
+    await db.delete('habit_log', existing.id);
+    await addSyncOp({ type: 'DELETE', collection: 'habit_log', id: existing.id });
   }
 }
 
-// ─── Аналітика ───────────────────────────────────────────────────────────────
+// ─── Analytics & Others ────────────────────────────────────────────────────────
 
 export async function getCaloriesByDate(date) {
-  const userId = getCurrentUser()
-  return query('SELECT id, date, name, calories, protein, fat, carbs, photo FROM calories WHERE date = ? AND user_id = ? ORDER BY rowid ASC', [date, userId])
+  const db = await getDB();
+  const all = await db.getAll('calories');
+  return all.filter(c => c.date === date);
 }
 
 export async function getDayTotals(date) {
-  const userId = getCurrentUser()
-  const rows = query(
-    `SELECT
-       COALESCE(SUM(calories),0) as calories,
-       COALESCE(SUM(protein),0)  as protein,
-       COALESCE(SUM(fat),0)      as fat,
-       COALESCE(SUM(carbs),0)    as carbs
-     FROM calories WHERE date = ? AND user_id = ?`,
-    [date, userId]
-  )
-  return rows[0] ?? { calories: 0, protein: 0, fat: 0, carbs: 0 }
+  const meals = await getCaloriesByDate(date);
+  return meals.reduce((acc, m) => {
+    acc.calories += Number(m.calories) || 0;
+    acc.protein += Number(m.protein) || 0;
+    acc.fat += Number(m.fat) || 0;
+    acc.carbs += Number(m.carbs) || 0;
+    return acc;
+  }, { calories: 0, protein: 0, fat: 0, carbs: 0 });
 }
 
 export async function computeStreak() {
-  const userId = getCurrentUser()
-  const rows = query('SELECT DISTINCT date FROM calories WHERE user_id = ? ORDER BY date DESC', [userId])
-  const days = new Set(rows.map(r => r.date))
-  let streak = 0
-  const d = new Date()
+  const db = await getDB();
+  const cals = await db.getAll('calories');
+  const days = new Set(cals.map(c => c.date));
+  let streak = 0;
+  const d = new Date();
   while (true) {
-    const ds = d.toISOString().slice(0, 10)
+    const ds = d.toISOString().slice(0, 10);
     if (days.has(ds)) {
-      streak++
-      d.setDate(d.getDate() - 1)
+      streak++;
+      d.setDate(d.getDate() - 1);
     } else {
-      break
+      break;
     }
   }
-  return streak
+  return streak;
 }
 
-// ─── Activity & Workouts ─────────────────────────────────────────────────────
-
 export async function getActivityLog(date = null) {
-  const userId = getCurrentUser()
+  const db = await getDB();
+  const all = await db.getAll('activity');
   if (date) {
-    const rows = query('SELECT * FROM activity_log WHERE date = ? AND user_id = ?', [date, userId])
-    return rows[0] ?? { steps: 0, distance: 0, running_distance: 0 }
+    return all.find(a => a.date === date) ?? { steps: 0, distance: 0, running_distance: 0 };
   }
-  return query('SELECT * FROM activity_log WHERE user_id = ? ORDER BY date DESC', [userId])
+  return all.sort((a,b) => b.date.localeCompare(a.date));
 }
 
 export async function logActivity(date, steps, distance, runningDistance) {
-  const userId = getCurrentUser()
-  const exists = query('SELECT id FROM activity_log WHERE date = ? AND user_id = ?', [date, userId])
-  if (exists.length) {
-    run('UPDATE activity_log SET steps = ?, distance = ?, running_distance = ? WHERE id = ?', 
-      [steps, distance, runningDistance, exists[0].id])
-  } else {
-    run('INSERT INTO activity_log (id, date, steps, distance, running_distance, user_id) VALUES (?,?,?,?,?,?)', 
-      [uid(), date, steps, distance, runningDistance, userId])
-  }
+  const db = await getDB();
+  const all = await db.getAll('activity');
+  const existing = all.find(a => a.date === date);
+  const data = { id: existing?.id || uid(), date, steps, distance, running_distance: runningDistance };
+  await db.put('activity', data);
+  await addSyncOp({ type: existing ? 'UPDATE' : 'CREATE', collection: 'activity', id: data.id, data });
 }
 
 export async function getWorkouts(fromDate = null) {
-  const userId = getCurrentUser()
+  const db = await getDB();
+  const all = await db.getAll('workouts');
   if (fromDate) {
-    return query('SELECT * FROM workouts WHERE date >= ? AND user_id = ? ORDER BY date DESC', [fromDate, userId])
+    return all.filter(w => w.date >= fromDate).sort((a,b) => b.date.localeCompare(a.date));
   }
-  return query('SELECT * FROM workouts WHERE user_id = ? ORDER BY date DESC', [userId])
+  return all.sort((a,b) => b.date.localeCompare(a.date));
 }
 
-// ─── Експорт / Імпорт ────────────────────────────────────────────────────────
-
-async function dumpAll() {
-  const userId = getCurrentUser()
-  const habitDefsRaw = await getHabitDefs()
-  const habitLogRaw  = await getHabitLog()
-  const settings     = await getSettings()
-  return {
-    calories: query('SELECT * FROM calories WHERE user_id = ? ORDER BY date ASC', [userId]),
-    weight:   query('SELECT id, date, weight FROM weight_log WHERE user_id = ? ORDER BY date ASC', [userId]),
-    tasks:    query('SELECT id, date, title, completed FROM tasks WHERE user_id = ? ORDER BY date ASC', [userId])
-              .map(r => ({ ...r, completed: r.completed === 1 })),
-    notes:    query('SELECT * FROM notes WHERE user_id = ? ORDER BY date ASC', [userId]),
-    activity: query('SELECT * FROM activity_log WHERE user_id = ? ORDER BY date ASC', [userId]),
-    workouts: query('SELECT * FROM workouts WHERE user_id = ? ORDER BY date ASC', [userId]),
-    habits: { defs: habitDefsRaw, log: habitLogRaw },
-    settings,
-  }
-}
+// ─── Export & Import ────────────────────────────────────────────────────────
 
 export async function exportData() {
-  try {
-    const data   = await dumpAll()
-    const json   = JSON.stringify(data, null, 2)
-    const blob   = new Blob([json], { type: 'application/json' })
-    const url    = URL.createObjectURL(blob)
-    const anchor = document.createElement('a')
-    anchor.href     = url
-    anchor.download = 'lifetracker-backup.json'
-    document.body.appendChild(anchor)
-    anchor.click()
-    document.body.removeChild(anchor)
-    URL.revokeObjectURL(url)
-    return true
-  } catch (err) {
-    console.error('[Storage] exportData failed:', err)
-    return false
-  }
+  const db = await getDB();
+  const data = {
+    calories: await db.getAll('calories'),
+    weight: await db.getAll('weight'),
+    tasks: await db.getAll('tasks'),
+    notes: await db.getAll('notes'),
+    activity: await db.getAll('activity'),
+    workouts: await db.getAll('workouts'),
+    habits: { defs: await db.getAll('habits_defs'), log: await db.getAll('habit_log') },
+    settings: await getSettings()
+  };
+  const json = JSON.stringify(data, null, 2);
+  const blob = new Blob([json], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = 'lifetracker-backup.json';
+  document.body.appendChild(anchor);
+  anchor.click();
+  document.body.removeChild(anchor);
+  URL.revokeObjectURL(url);
+  return true;
 }
-
-const REQUIRED_FIELDS = ['calories', 'weight', 'tasks', 'notes', 'habits', 'settings']
 
 export async function importData(file) {
   if (!file || file.type !== 'application/json') {
-    return { ok: false, message: 'Файл повинен бути у форматі JSON (.json).' }
+    return { ok: false, message: 'Файл повинен бути у форматі JSON (.json).' };
   }
-
-  const userId = getCurrentUser()
-  if (!userId) return { ok: false, message: 'Not logged in' }
+  const userId = getCurrentUser();
+  if (!userId) return { ok: false, message: 'Not logged in' };
 
   return new Promise((resolve) => {
-    const reader = new FileReader()
-
+    const reader = new FileReader();
     reader.onload = async (e) => {
       try {
-        const parsed = JSON.parse(e.target.result)
-        const hasAll = REQUIRED_FIELDS.every(f => Object.hasOwn(parsed, f))
-        if (!hasAll) throw new Error('Невірний формат бекапу (відсутні необхідні поля).')
-
-        // Clear current user's data
-        run('DELETE FROM calories WHERE user_id = ?', [userId])
-        run('DELETE FROM weight_log WHERE user_id = ?', [userId])
-        run('DELETE FROM tasks WHERE user_id = ?', [userId])
-        run('DELETE FROM notes WHERE user_id = ?', [userId])
-        run('DELETE FROM habit_log WHERE user_id = ?', [userId])
-        run('DELETE FROM activity_log WHERE user_id = ?', [userId])
-        run('DELETE FROM workouts WHERE user_id = ?', [userId])
-
-        // Insert new data
-        parsed.calories.forEach(c => run(`INSERT INTO calories (id, date, name, calories, protein, fat, carbs, photo, user_id) VALUES (?,?,?,?,?,?,?,?,?)`, [c.id, c.date, c.name, c.calories, c.protein, c.fat, c.carbs, c.photo ?? null, userId]))
-        parsed.weight.forEach(w => run(`INSERT INTO weight_log (id, date, weight, user_id) VALUES (?,?,?,?)`, [w.id, w.date, w.weight, userId]))
-        parsed.tasks.forEach(t => run(`INSERT INTO tasks (id, date, title, completed, user_id) VALUES (?,?,?,?,?)`, [t.id, t.date, t.title, t.completed ? 1 : 0, userId]))
-        parsed.notes.forEach(n => run(`INSERT INTO notes (id, date, content, user_id) VALUES (?,?,?,?)`, [n.id, n.date, n.content, userId]))
+        const parsed = JSON.parse(e.target.result);
+        const db = await getDB();
         
-        if (parsed.activity) {
-          parsed.activity.forEach(a => run(`INSERT INTO activity_log (id, date, steps, distance, running_distance, user_id) VALUES (?,?,?,?,?,?)`, [a.id, a.date, a.steps, a.distance, a.running_distance, userId]))
+        const tables = ['calories', 'weight', 'tasks', 'notes', 'activity', 'workouts'];
+        for (const table of tables) {
+          if (parsed[table]) {
+            const tx = db.transaction(table, 'readwrite');
+            tx.store.clear();
+            parsed[table].forEach(item => tx.store.put(item));
+            await tx.done;
+          }
         }
-        if (parsed.workouts) {
-          parsed.workouts.forEach(w => run(`INSERT INTO workouts (id, date, title, calories_burned, source_id, user_id) VALUES (?,?,?,?,?,?)`, [w.id, w.date, w.title, w.calories_burned, w.source_id, userId]))
+        
+        if (parsed.habits) {
+          if (parsed.habits.defs) {
+            const tx = db.transaction('habits_defs', 'readwrite');
+            tx.store.clear();
+            parsed.habits.defs.forEach(item => tx.store.put(item));
+            await tx.done;
+          }
+          if (parsed.habits.log) {
+            const tx = db.transaction('habit_log', 'readwrite');
+            tx.store.clear();
+            parsed.habits.log.forEach(item => tx.store.put(item));
+            await tx.done;
+          }
         }
 
-        parsed.habits.log.forEach(l => run(`INSERT INTO habit_log (id, date, habit_id, user_id) VALUES (?,?,?,?)`, [l.id ?? uid(), l.date, l.habitId ?? l.habit_id, userId]))
+        // Trigger bulk sync to server
+        await fetch(`${API_URL}/sync/push`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId, data: parsed })
+        });
 
-        resolve({ ok: true, message: 'Дані успішно відновлено.' })
+        resolve({ ok: true, message: 'Дані успішно відновлено.' });
       } catch (err) {
-        console.error('[Storage] Import failed:', err)
-        resolve({ ok: false, message: 'Помилка при читанні файлу: ' + err.message })
+        resolve({ ok: false, message: 'Помилка при читанні файлу: ' + err.message });
       }
-    }
-
-    reader.onerror = () => {
-      resolve({ ok: false, message: 'Не вдалося прочитати файл.' })
-    }
-
-    reader.readAsText(file)
-  })
+    };
+    reader.onerror = () => resolve({ ok: false, message: 'Не вдалося прочитати файл.' });
+    reader.readAsText(file);
+  });
 }
 
 export async function resetData() {
-  const userId = getCurrentUser()
-  if (!userId) return false
-  try {
-    run('DELETE FROM calories WHERE user_id = ?', [userId])
-    run('DELETE FROM weight_log WHERE user_id = ?', [userId])
-    run('DELETE FROM tasks WHERE user_id = ?', [userId])
-    run('DELETE FROM notes WHERE user_id = ?', [userId])
-    run('DELETE FROM habit_log WHERE user_id = ?', [userId])
-    run('DELETE FROM activity_log WHERE user_id = ?', [userId])
-    run('DELETE FROM workouts WHERE user_id = ?', [userId])
-    return true
-  } catch(e) {
-    return false
+  const db = await getDB();
+  const tables = ['calories', 'weight', 'tasks', 'notes', 'habits_defs', 'habit_log', 'activity', 'workouts', 'sync_queue'];
+  for (const table of tables) {
+    const tx = db.transaction(table, 'readwrite');
+    tx.store.clear();
+    await tx.done;
   }
+  return true;
 }

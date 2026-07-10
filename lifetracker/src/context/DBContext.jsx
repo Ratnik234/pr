@@ -12,8 +12,7 @@
  */
 
 import { createContext, useContext, useEffect, useState } from 'react'
-import { initDB } from '../utils/db'
-import { migrateFromLocalStorage } from '../utils/migrate'
+import { getDB } from '../utils/storage'
 
 const DBContext = createContext({ isReady: false, error: null })
 
@@ -30,9 +29,7 @@ export function DBProvider({ children }) {
 
     async function bootstrap() {
       try {
-        await initDB()
-        // Одноразова міграція зі старого LocalStorage (нічого не робить якщо вже мігровано)
-        await migrateFromLocalStorage()
+        await getDB()
         if (!cancelled) setIsReady(true)
       } catch (err) {
         console.error('[DBProvider] Не вдалося ініціалізувати БД:', err)
