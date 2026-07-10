@@ -86,7 +86,7 @@ app.post('/api/sync', async (req, res) => {
     // Process operations sequentially
     for (const op of operations) {
       const { type, collection, data, id } = op;
-      
+
       try {
         switch (collection) {
           case 'calories':
@@ -116,7 +116,7 @@ app.post('/api/sync', async (req, res) => {
               });
             }
             break;
-            // Add other collections...
+          // Add other collections...
         }
       } catch (opError) {
         console.error(`Error processing operation ${type} on ${collection}:`, opError);
@@ -158,7 +158,7 @@ app.post('/api/sync/push', async (req, res) => {
   try {
     // To make it simple, we can delete and re-insert or use upserts.
     // For a robust offline-first app, we should use upserts.
-    
+
     // Process Tasks
     if (data.tasks) {
       for (const t of data.tasks) {
@@ -200,6 +200,11 @@ app.post('/api/sync/push', async (req, res) => {
 });
 
 const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+
+if (!process.env.VERCEL) {
+  app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+  });
+}
+
+export default app;
