@@ -1,6 +1,6 @@
 import { openDB } from 'idb';
 
-const API_URL = 'http://localhost:3001/api';
+const API_URL = 'https://pr-gbd9.vercel.app/';
 
 let dbPromise;
 export async function getDB() {
@@ -50,7 +50,7 @@ export async function getCurrentUserInfo() {
   if (!id) return null;
   const username = localStorage.getItem('lifetracker_username');
   if (username) return { username };
-  
+
   if (navigator.onLine) {
     try {
       const res = await fetch(`${API_URL}/users/${id}`);
@@ -223,14 +223,14 @@ export async function getSettings() {
   const db = await getDB();
   const all = await db.getAll('settings');
   const map = Object.fromEntries(all.map(s => [s.key, s.value]));
-  
+
   return {
-    theme:     map.theme     ?? 'dark',
+    theme: map.theme ?? 'dark',
     geminiKey: map.geminiKey ?? '',
-    language:  map.language  ?? 'en',
-    goals:     map.goals     ?? { calories: 2200, protein: 120, fat: 70, carbs: 250 },
-    waterLog:  map.waterLog  ?? {},
-    profile:   map.profile   ?? { height: '', weight: '', age: '', gender: 'male', activityLevel: 'medium' },
+    language: map.language ?? 'en',
+    goals: map.goals ?? { calories: 2200, protein: 120, fat: 70, carbs: 250 },
+    waterLog: map.waterLog ?? {},
+    profile: map.profile ?? { height: '', weight: '', age: '', gender: 'male', activityLevel: 'medium' },
   };
 }
 
@@ -263,9 +263,9 @@ export async function getHabitLog(fromDate = null) {
   const db = await getDB();
   const all = await db.getAll('habit_log');
   if (fromDate) {
-    return all.filter(l => l.date >= fromDate).sort((a,b) => b.date.localeCompare(a.date));
+    return all.filter(l => l.date >= fromDate).sort((a, b) => b.date.localeCompare(a.date));
   }
-  return all.sort((a,b) => b.date.localeCompare(a.date));
+  return all.sort((a, b) => b.date.localeCompare(a.date));
 }
 
 export async function toggleHabit(habitId, done) {
@@ -273,7 +273,7 @@ export async function toggleHabit(habitId, done) {
   const today = todayStr();
   const logs = await db.getAll('habit_log');
   const existing = logs.find(l => l.date === today && (l.habitId === habitId || l.habit_id === habitId));
-  
+
   if (done && !existing) {
     const entry = { id: uid(), date: today, habitId };
     await db.put('habit_log', entry);
@@ -327,7 +327,7 @@ export async function getActivityLog(date = null) {
   if (date) {
     return all.find(a => a.date === date) ?? { steps: 0, distance: 0, running_distance: 0 };
   }
-  return all.sort((a,b) => b.date.localeCompare(a.date));
+  return all.sort((a, b) => b.date.localeCompare(a.date));
 }
 
 export async function logActivity(date, steps, distance, runningDistance) {
@@ -343,9 +343,9 @@ export async function getWorkouts(fromDate = null) {
   const db = await getDB();
   const all = await db.getAll('workouts');
   if (fromDate) {
-    return all.filter(w => w.date >= fromDate).sort((a,b) => b.date.localeCompare(a.date));
+    return all.filter(w => w.date >= fromDate).sort((a, b) => b.date.localeCompare(a.date));
   }
-  return all.sort((a,b) => b.date.localeCompare(a.date));
+  return all.sort((a, b) => b.date.localeCompare(a.date));
 }
 
 // ─── Export & Import ────────────────────────────────────────────────────────
@@ -388,7 +388,7 @@ export async function importData(file) {
       try {
         const parsed = JSON.parse(e.target.result);
         const db = await getDB();
-        
+
         const tables = ['calories', 'weight', 'tasks', 'notes', 'activity', 'workouts'];
         for (const table of tables) {
           if (parsed[table]) {
@@ -398,7 +398,7 @@ export async function importData(file) {
             await tx.done;
           }
         }
-        
+
         if (parsed.habits) {
           if (parsed.habits.defs) {
             const tx = db.transaction('habits_defs', 'readwrite');
