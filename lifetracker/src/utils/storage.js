@@ -53,7 +53,7 @@ export async function getCurrentUserInfo() {
 
   if (navigator.onLine) {
     try {
-      const res = await fetch(`${API_URL}/users/${id}`);
+      const res = await fetch(`${API_URL}/api/users/${id}`);
       const data = await res.json();
       if (data.username) {
         localStorage.setItem('lifetracker_username', data.username);
@@ -68,7 +68,7 @@ export async function getCurrentUserInfo() {
 
 export async function loginUser(username, password) {
   try {
-    const res = await fetch(`${API_URL}/auth/login`, {
+    const res = await fetch(`${API_URL}/api/auth/login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username, password })
@@ -87,7 +87,7 @@ export async function loginUser(username, password) {
 
 export async function registerUser(username, password) {
   try {
-    const res = await fetch(`${API_URL}/auth/register`, {
+    const res = await fetch(`${API_URL}/api/auth/register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username, password })
