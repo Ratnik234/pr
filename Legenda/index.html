@@ -1,0 +1,1121 @@
+<!DOCTYPE html>
+<html lang="uk">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#1B2119" />
+  <title>LifeTracker — Харчування, Звички та Статистика</title>
+  <meta name="description" content="LifeTracker — персональний wellness-щоденник: трекер калорій та БЖУ, щоденник харчування, трекер ваги, звички та статистика.">
+  <!-- Favicon -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%234F7A4A'/><polyline points='80,50 65,50 57,73 43,27 35,50 20,50' fill='none' stroke='white' stroke-width='8' stroke-linecap='round' stroke-linejoin='round'/></svg>" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Work+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap"
+    rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --bg-dark: #1B2119;
+      --bg-dark-2: #232B1F;
+      --paper: #FBF9F3;
+      --ink: #20241C;
+      --muted: #6B7268;
+      --green: #4F7A4A;
+      --green-soft: #DCE7D6;
+      --red: #C1473A;
+      --red-soft: #F4DDD9;
+      --gold: #D9A544;
+      --gold-soft: #F3E4C4;
+      --line: #20241C;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background: var(--bg-dark);
+      font-family: 'Work Sans', sans-serif;
+      color: var(--ink);
+    }
+
+    .app {
+      max-width: 920px;
+      margin: 0 auto;
+      padding: 32px 20px 80px;
+    }
+
+    .top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-end;
+      margin-bottom: 28px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid rgba(251, 249, 243, 0.18);
+    }
+
+    .top h1 {
+      font-family: 'Archivo Black', sans-serif;
+      color: var(--paper);
+      font-size: 22px;
+      letter-spacing: 0.02em;
+      margin: 0 0 4px;
+      text-transform: uppercase;
+    }
+
+    .top .date {
+      font-family: 'IBM Plex Mono', monospace;
+      color: rgba(251, 249, 243, 0.6);
+      font-size: 13px;
+    }
+
+    .streak-badge {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      color: var(--gold);
+      font-family: 'IBM Plex Mono', monospace;
+    }
+
+    .streak-badge .num {
+      font-family: 'Archivo Black', sans-serif;
+      font-size: 28px;
+      line-height: 1;
+      color: var(--gold);
+    }
+
+    .streak-badge .lbl {
+      font-size: 11px;
+      color: rgba(251, 249, 243, 0.55);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+    }
+
+    /* Toolbar for export/import */
+    .toolbar {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+    }
+
+    .toolbar button {
+      font-family: 'Work Sans', sans-serif;
+      font-size: 13px;
+      font-weight: 600;
+      padding: 8px 16px;
+      border: none;
+      border-radius: 2px;
+      cursor: pointer;
+      transition: opacity 0.15s;
+    }
+
+    .toolbar button:hover {
+      opacity: 0.85;
+    }
+
+    .btn-export {
+      background: var(--green);
+      color: #fff;
+    }
+
+    .btn-import {
+      background: var(--gold);
+      color: var(--ink);
+    }
+
+    .btn-clear {
+      background: var(--red);
+      color: #fff;
+    }
+
+    .toolbar input[type=file] {
+      display: none;
+    }
+
+    .toolbar-status {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 12px;
+      padding: 6px 12px;
+      border-radius: 2px;
+      display: none;
+    }
+
+    .toolbar-status.ok {
+      display: block;
+      background: var(--green-soft);
+      color: var(--green);
+    }
+
+    .toolbar-status.err {
+      display: block;
+      background: var(--red-soft);
+      color: var(--red);
+    }
+
+    .card {
+      background: var(--paper);
+      border-radius: 2px;
+      margin-bottom: 20px;
+      padding: 20px 22px;
+    }
+
+    .card h2 {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 12px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin: 0 0 14px;
+    }
+
+    /* Nutrition facts panel */
+    .nutrition-panel {
+      border: 3px solid var(--line);
+      padding: 14px 18px 18px;
+      background: var(--paper);
+    }
+
+    .nutrition-panel .np-title {
+      font-family: 'Archivo Black', sans-serif;
+      font-size: 26px;
+      text-transform: uppercase;
+      margin: 0 0 2px;
+    }
+
+    .np-sub {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 11px;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+
+    .rule-thick {
+      border: none;
+      border-top: 8px solid var(--line);
+      margin: 8px 0;
+    }
+
+    .rule-mid {
+      border: none;
+      border-top: 4px solid var(--line);
+      margin: 8px 0;
+    }
+
+    .rule-thin {
+      border: none;
+      border-top: 1px solid var(--line);
+      margin: 6px 0;
+    }
+
+    .cal-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+    }
+
+    .cal-row .lbl {
+      font-family: 'Archivo Black', sans-serif;
+      font-size: 18px;
+      text-transform: uppercase;
+    }
+
+    .cal-row .val {
+      font-family: 'Archivo Black', sans-serif;
+      font-size: 34px;
+    }
+
+    .cal-remaining {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 12px;
+      color: var(--muted);
+      text-align: right;
+      margin-top: -4px;
+    }
+
+    .macro-row {
+      margin: 10px 0;
+    }
+
+    .macro-row .m-top {
+      display: flex;
+      justify-content: space-between;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 12.5px;
+      margin-bottom: 4px;
+    }
+
+    .macro-row .m-top b {
+      font-family: 'Work Sans', sans-serif;
+      font-weight: 700;
+    }
+
+    .macro-bar {
+      height: 8px;
+      background: #e8e6dd;
+      border-radius: 0;
+      overflow: hidden;
+    }
+
+    .macro-bar>div {
+      height: 100%;
+      transition: width 0.3s;
+    }
+
+    .macro-bar.protein>div {
+      background: var(--green);
+    }
+
+    .macro-bar.fat>div {
+      background: var(--gold);
+    }
+
+    .macro-bar.carb>div {
+      background: #8B6BB0;
+    }
+
+    .over-limit {
+      color: var(--red) !important;
+    }
+
+    /* Food form + list */
+    .food-form {
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr 1fr 1fr auto;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+
+    .food-form input {
+      font-family: 'Work Sans', sans-serif;
+      padding: 9px 10px;
+      border: 1px solid #d8d5c9;
+      border-radius: 2px;
+      font-size: 13.5px;
+      background: #fff;
+      color: var(--ink);
+      width: 100%;
+    }
+
+    .food-form button {
+      background: var(--ink);
+      color: var(--paper);
+      border: none;
+      border-radius: 2px;
+      padding: 9px 14px;
+      font-family: 'Work Sans', sans-serif;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 13.5px;
+    }
+
+    .food-form button:hover {
+      background: var(--green);
+    }
+
+    .food-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+    }
+
+    .food-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 0;
+      border-bottom: 1px solid #eae7db;
+      font-size: 13.5px;
+    }
+
+    .food-item:last-child {
+      border-bottom: none;
+    }
+
+    .food-item .fi-name {
+      font-weight: 600;
+    }
+
+    .food-item .fi-macros {
+      font-family: 'IBM Plex Mono', monospace;
+      color: var(--muted);
+      font-size: 12px;
+      margin-left: 8px;
+    }
+
+    .food-item .fi-del {
+      background: none;
+      border: none;
+      color: var(--red);
+      cursor: pointer;
+      font-size: 16px;
+      line-height: 1;
+      padding: 2px 6px;
+    }
+
+    .empty-note {
+      color: var(--muted);
+      font-size: 13px;
+      font-style: italic;
+      padding: 6px 0;
+    }
+
+    /* Goals settings */
+    .goals-form {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr) auto;
+      gap: 8px;
+      align-items: end;
+    }
+
+    .goals-form label {
+      display: block;
+      font-size: 11px;
+      color: var(--muted);
+      margin-bottom: 4px;
+      font-family: 'IBM Plex Mono', monospace;
+    }
+
+    .goals-form input {
+      padding: 8px 9px;
+      border: 1px solid #d8d5c9;
+      border-radius: 2px;
+      font-size: 13px;
+      width: 100%;
+    }
+
+    .goals-form button {
+      background: var(--green);
+      color: #fff;
+      border: none;
+      border-radius: 2px;
+      padding: 9px 14px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    /* Stats grid */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+
+    @media(max-width:720px) {
+      .stats-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .food-form {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .goals-form {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+
+    .chart-wrap {
+      height: 200px;
+    }
+
+    /* Habits */
+    .habit-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 0;
+      border-bottom: 1px solid #eae7db;
+    }
+
+    .habit-item:last-child {
+      border-bottom: none;
+    }
+
+    .habit-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .habit-left input[type=checkbox] {
+      width: 18px;
+      height: 18px;
+      accent-color: var(--green);
+    }
+
+    .habit-pct {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .add-weight {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+
+    .add-weight input {
+      padding: 8px 10px;
+      border: 1px solid #d8d5c9;
+      border-radius: 2px;
+      width: 120px;
+    }
+
+    .add-weight button {
+      background: var(--ink);
+      color: var(--paper);
+      border: none;
+      border-radius: 2px;
+      padding: 8px 14px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    /* AI settings */
+    .ai-settings-form {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .ai-settings-form input {
+      flex: 1;
+      min-width: 220px;
+      padding: 9px 10px;
+      border: 1px solid #d8d5c9;
+      border-radius: 2px;
+      font-size: 13px;
+    }
+
+    .ai-settings-form button {
+      background: var(--green);
+      color: #fff;
+      border: none;
+      border-radius: 2px;
+      padding: 9px 14px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .ai-note {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 8px;
+      line-height: 1.5;
+    }
+
+    .ai-note a {
+      color: var(--green);
+    }
+
+    /* Photo row */
+    .photo-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 14px;
+      flex-wrap: wrap;
+    }
+
+    .photo-row input[type=file] {
+      font-size: 12.5px;
+      max-width: 220px;
+    }
+
+    #photoPreview {
+      width: 56px;
+      height: 56px;
+      object-fit: cover;
+      border-radius: 2px;
+      border: 1px solid #d8d5c9;
+      display: none;
+    }
+
+    .photo-row button {
+      background: var(--gold);
+      color: var(--ink);
+      border: none;
+      border-radius: 2px;
+      padding: 9px 14px;
+      font-weight: 700;
+      cursor: pointer;
+      font-size: 13px;
+    }
+
+    .photo-row button:disabled {
+      opacity: 0.5;
+      cursor: default;
+    }
+
+    #aiStatus {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    #aiStatus.err {
+      color: var(--red);
+    }
+
+    #aiStatus.ok {
+      color: var(--green);
+    }
+
+    .fi-thumb {
+      width: 32px;
+      height: 32px;
+      object-fit: cover;
+      border-radius: 2px;
+      margin-right: 8px;
+      vertical-align: middle;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="app">
+
+    <div class="top">
+      <div>
+        <h1>Харчування та статистика</h1>
+        <div class="date" id="todayLabel"></div>
+      </div>
+      <div class="streak-badge">
+        <div class="num" id="streakNum">0</div>
+        <div class="lbl">днів поспіль</div>
+      </div>
+    </div>
+
+    <!-- Toolbar: Export / Import / Clear -->
+    <div class="toolbar">
+      <button id="btnExport" class="btn-export">⬇ Експорт JSON</button>
+      <button id="btnImport" class="btn-import">⬆ Імпорт JSON</button>
+      <input type="file" id="importFileInput" accept="application/json,.json">
+      <button id="btnClear" class="btn-clear">✕ Очистити дані</button>
+      <span id="toolbarStatus" class="toolbar-status"></span>
+    </div>
+
+    <!-- Daily nutrition facts panel -->
+    <div class="card">
+      <h2>Підсумок за сьогодні</h2>
+      <div class="nutrition-panel">
+        <div class="np-title">Денний підсумок</div>
+        <div class="np-sub" id="entryCountNote">0 записів сьогодні</div>
+        <hr class="rule-thick">
+        <div class="cal-row">
+          <span class="lbl">Калорії</span>
+          <span class="val" id="calValue">0</span>
+        </div>
+        <div class="cal-remaining" id="calRemaining">ціль: 0 ккал</div>
+        <hr class="rule-mid">
+        <div class="macro-row">
+          <div class="m-top"><span>Білки</span><b id="proteinValue">0 г</b></div>
+          <div class="macro-bar protein">
+            <div id="proteinBar" style="width:0%"></div>
+          </div>
+        </div>
+        <div class="macro-row">
+          <div class="m-top"><span>Жири</span><b id="fatValue">0 г</b></div>
+          <div class="macro-bar fat">
+            <div id="fatBar" style="width:0%"></div>
+          </div>
+        </div>
+        <div class="macro-row">
+          <div class="m-top"><span>Вуглеводи</span><b id="carbValue">0 г</b></div>
+          <div class="macro-bar carb">
+            <div id="carbBar" style="width:0%"></div>
+          </div>
+        </div>
+        <hr class="rule-thin">
+        <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);">
+          * норми задаються нижче, у розділі «Цілі»
+        </div>
+      </div>
+    </div>
+
+    <!-- Goals -->
+    <div class="card">
+      <h2>Цілі (калорії / БЖУ на день)</h2>
+      <div class="goals-form">
+        <div><label>Калорії</label><input type="number" id="goalCalories" min="0"></div>
+        <div><label>Білки, г</label><input type="number" id="goalProtein" min="0"></div>
+        <div><label>Жири, г</label><input type="number" id="goalFat" min="0"></div>
+        <div><label>Вуглеводи, г</label><input type="number" id="goalCarbs" min="0"></div>
+        <button id="saveGoalsBtn">Зберегти</button>
+      </div>
+    </div>
+
+    <!-- AI settings -->
+    <div class="card">
+      <h2>Налаштування AI-аналізу фото (Gemini)</h2>
+      <div class="ai-settings-form">
+        <input type="password" id="geminiKeyInput" placeholder="Встав свій Gemini API ключ">
+        <button id="saveKeyBtn">Зберегти ключ</button>
+      </div>
+      <div class="ai-note">
+        Ключ береш безкоштовно на <a href="https://aistudio.google.com/apikey" target="_blank"
+          rel="noopener">aistudio.google.com/apikey</a> і він зберігається лише в localStorage твого браузера.
+        Важливо: ключ викликається прямо з фронтенду, тому будь-хто з доступом до консолі розробника зможе його побачити
+        —
+        для навчального проєкту / демо це ок, для публічного продукту такий виклик краще перенести на бекенд.
+      </div>
+    </div>
+
+    <!-- Food diary -->
+    <div class="card">
+      <h2>Щоденник харчування — сьогодні</h2>
+      <div class="photo-row">
+        <input type="file" accept="image/*" id="foodPhotoInput">
+        <img id="photoPreview" alt="превʼю фото">
+        <button id="analyzePhotoBtn">📷 Аналізувати фото (AI)</button>
+        <span id="aiStatus"></span>
+      </div>
+      <div class="food-form">
+        <input type="text" id="fName" placeholder="Назва страви">
+        <input type="number" id="fCal" placeholder="Ккал">
+        <input type="number" id="fProtein" placeholder="Білки, г">
+        <input type="number" id="fFat" placeholder="Жири, г">
+        <input type="number" id="fCarb" placeholder="Вугл., г">
+        <button id="addFoodBtn">Додати</button>
+      </div>
+      <ul class="food-list" id="foodList"></ul>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-grid">
+      <div class="card">
+        <h2>Вага, графік</h2>
+        <div class="add-weight">
+          <input type="number" step="0.1" id="weightInput" placeholder="кг">
+          <button id="addWeightBtn">Додати</button>
+        </div>
+        <div class="chart-wrap"><canvas id="weightChart"></canvas></div>
+      </div>
+      <div class="card">
+        <h2>Калорії за останні 7 днів</h2>
+        <div class="chart-wrap"><canvas id="weeklyChart"></canvas></div>
+      </div>
+    </div>
+
+    <!-- Habits -->
+    <div class="card">
+      <h2>Звички / цілі тижня</h2>
+      <div id="habitList"></div>
+    </div>
+
+  </div>
+
+  <!-- Storage module завантажується першим -->
+  <script src="utils/storage.js"></script>
+  <script>
+    "use strict";
+
+    // ─── Псевдонім для зручності ──────────────────────────────────────────────────
+    const ST = window.LTStorage;
+
+    // ─── Ініціалізація UI ─────────────────────────────────────────────────────────
+    document.getElementById("todayLabel").textContent =
+      new Date().toLocaleDateString("uk-UA", { weekday: "long", day: "numeric", month: "long" });
+
+    // ─── Допоміжні ───────────────────────────────────────────────────────────────
+    function escapeHtml(s) {
+      return String(s).replace(/[&<>"']/g, c =>
+        ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": '&#39;' }[c])
+      );
+    }
+    function pluralEntries(n) {
+      const r10 = n % 10, r100 = n % 100;
+      if (r10 === 1 && r100 !== 11) return "запис";
+      if ([2, 3, 4].includes(r10) && ![12, 13, 14].includes(r100)) return "записи";
+      return "записів";
+    }
+
+    // ─── Toolbar: Export / Import / Clear ────────────────────────────────────────
+    function showToolbarStatus(msg, type) {
+      const el = document.getElementById("toolbarStatus");
+      el.textContent = msg;
+      el.className = "toolbar-status " + (type || "");
+      if (type) {
+        clearTimeout(el._timer);
+        el._timer = setTimeout(() => { el.className = "toolbar-status"; }, 4000);
+      }
+    }
+
+    document.getElementById("btnExport").addEventListener("click", () => {
+      const ok = ST.exportData();
+      showToolbarStatus(
+        ok ? "Файл lifetracker-backup.json завантажено!" : "Помилка при експорті.",
+        ok ? "ok" : "err"
+      );
+    });
+
+    document.getElementById("btnImport").addEventListener("click", () => {
+      document.getElementById("importFileInput").click();
+    });
+
+    document.getElementById("importFileInput").addEventListener("change", async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      e.target.value = ""; // reset для повторного вибору того ж файлу
+
+      const result = await ST.importData(file);
+      showToolbarStatus(result.message, result.ok ? "ok" : "err");
+      if (result.ok) {
+        loadGoalsForm();
+        loadApiKeyField();
+        renderAll();
+      }
+    });
+
+    document.getElementById("btnClear").addEventListener("click", () => {
+      if (!confirm("Видалити всі дані LifeTracker? Цю дію не можна скасувати.")) return;
+      ST.clearData();
+      loadGoalsForm();
+      loadApiKeyField();
+      renderAll();
+      showToolbarStatus("Дані очищено.", "ok");
+    });
+
+    // ─── Food diary ───────────────────────────────────────────────────────────────
+    let currentPhotoDataUrl = null;
+
+    function getTodayCalories() {
+      return ST.getCaloriesByDate(ST.todayStr());
+    }
+
+    function renderFoodList() {
+      const list = document.getElementById("foodList");
+      const todays = getTodayCalories();
+      document.getElementById("entryCountNote").textContent =
+        todays.length + " " + pluralEntries(todays.length) + " сьогодні";
+
+      if (todays.length === 0) {
+        list.innerHTML = '<li class="empty-note">Ще немає записів за сьогодні — додай перший прийом їжі вище.</li>';
+        return;
+      }
+      list.innerHTML = todays.map(e => `
+    <li class="food-item">
+      <span>
+        ${e.photo ? `<img class="fi-thumb" src="${e.photo}" alt="${escapeHtml(e.name)}">` : ""}
+        <span class="fi-name">${escapeHtml(e.name)}</span>
+        <span class="fi-macros">${e.calories} ккал · Б${e.protein} Ж${e.fat} В${e.carbs}</span>
+      </span>
+      <button class="fi-del" data-id="${e.id}" title="Видалити">✕</button>
+    </li>
+  `).join("");
+
+      list.querySelectorAll(".fi-del").forEach(btn => {
+        btn.addEventListener("click", () => {
+          ST.deleteEntry("calories", btn.dataset.id); // ← універсальна функція
+          renderAll();
+        });
+      });
+    }
+
+    document.getElementById("addFoodBtn").addEventListener("click", () => {
+      const name = document.getElementById("fName").value.trim();
+      if (!name) return;
+
+      // ← addEntry з utils/storage.js (автоматично ставить id та date)
+      ST.addEntry("calories", {
+        name,
+        calories: Number(document.getElementById("fCal").value) || 0,
+        protein: Number(document.getElementById("fProtein").value) || 0,
+        fat: Number(document.getElementById("fFat").value) || 0,
+        carbs: Number(document.getElementById("fCarb").value) || 0,
+        ...(currentPhotoDataUrl ? { photo: currentPhotoDataUrl } : {})
+      });
+
+      ["fName", "fCal", "fProtein", "fFat", "fCarb"].forEach(id => {
+        document.getElementById(id).value = "";
+      });
+      resetPhotoState();
+      renderAll();
+    });
+
+    // ─── Summary panel ────────────────────────────────────────────────────────────
+    function renderSummary() {
+      const totals = ST.getDayTotals(ST.todayStr()); // ← універсальна функція
+      const goals = ST.getSettings().goals;
+
+      const calEl = document.getElementById("calValue");
+      calEl.textContent = totals.calories;
+      calEl.classList.toggle("over-limit", totals.calories > goals.calories);
+
+      const remaining = goals.calories - totals.calories;
+      document.getElementById("calRemaining").textContent = remaining >= 0
+        ? `залишилось ${remaining} ккал (ціль ${goals.calories})`
+        : `перевищено на ${-remaining} ккал (ціль ${goals.calories})`;
+
+      setMacro("protein", totals.protein, goals.protein);
+      setMacro("fat", totals.fat, goals.fat);
+      setMacro("carb", totals.carbs, goals.carbs);
+    }
+
+    function setMacro(key, value, goal) {
+      const labelKey = key === "carb" ? "carbValue" : key + "Value";
+      document.getElementById(labelKey).textContent = `${value} / ${goal} г`;
+      const pct = goal > 0 ? Math.min(100, Math.round((value / goal) * 100)) : 0;
+      document.getElementById(key + "Bar").style.width = pct + "%";
+    }
+
+    // ─── Goals form ───────────────────────────────────────────────────────────────
+    function loadGoalsForm() {
+      const g = ST.getSettings().goals;
+      document.getElementById("goalCalories").value = g.calories;
+      document.getElementById("goalProtein").value = g.protein;
+      document.getElementById("goalFat").value = g.fat;
+      document.getElementById("goalCarbs").value = g.carbs;
+    }
+
+    document.getElementById("saveGoalsBtn").addEventListener("click", () => {
+      // ← updateSettings з utils/storage.js — часткове оновлення
+      ST.updateSettings({
+        goals: {
+          calories: Number(document.getElementById("goalCalories").value) || 0,
+          protein: Number(document.getElementById("goalProtein").value) || 0,
+          fat: Number(document.getElementById("goalFat").value) || 0,
+          carbs: Number(document.getElementById("goalCarbs").value) || 0
+        }
+      });
+      renderAll();
+    });
+
+    // ─── AI / Gemini key ──────────────────────────────────────────────────────────
+    function loadApiKeyField() {
+      document.getElementById("geminiKeyInput").value = ST.getSettings().geminiKey || "";
+    }
+
+    document.getElementById("saveKeyBtn").addEventListener("click", () => {
+      ST.updateSettings({ geminiKey: document.getElementById("geminiKeyInput").value.trim() });
+      setAiStatus("Ключ збережено", "ok");
+    });
+
+    function setAiStatus(text, cls) {
+      const el = document.getElementById("aiStatus");
+      el.textContent = text;
+      el.className = cls || "";
+    }
+
+    // ─── Photo resize + AI analysis ───────────────────────────────────────────────
+    function resizeImage(file, maxWidth) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const img = new Image();
+          img.onload = () => {
+            const scale = Math.min(1, maxWidth / img.width);
+            const canvas = document.createElement("canvas");
+            canvas.width = img.width * scale;
+            canvas.height = img.height * scale;
+            canvas.getContext("2d").drawImage(img, 0, 0, canvas.width, canvas.height);
+            resolve(canvas.toDataURL("image/jpeg", 0.7));
+          };
+          img.onerror = reject;
+          img.src = e.target.result;
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    }
+
+    function resetPhotoState() {
+      currentPhotoDataUrl = null;
+      document.getElementById("foodPhotoInput").value = "";
+      const preview = document.getElementById("photoPreview");
+      preview.style.display = "none";
+      preview.src = "";
+      setAiStatus("");
+    }
+
+    document.getElementById("foodPhotoInput").addEventListener("change", async (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      currentPhotoDataUrl = await resizeImage(file, 480);
+      const preview = document.getElementById("photoPreview");
+      preview.src = currentPhotoDataUrl;
+      preview.style.display = "block";
+      setAiStatus("");
+    });
+
+    document.getElementById("analyzePhotoBtn").addEventListener("click", async () => {
+      if (!currentPhotoDataUrl) { setAiStatus("Спочатку обери фото", "err"); return; }
+      const apiKey = ST.getSettings().geminiKey;
+      if (!apiKey) { setAiStatus("Встав Gemini API ключ у налаштуваннях вище", "err"); return; }
+
+      const btn = document.getElementById("analyzePhotoBtn");
+      btn.disabled = true;
+      setAiStatus("Аналізуємо фото…");
+
+      try {
+        const match = currentPhotoDataUrl.match(/^data:(.*?);base64,(.*)$/);
+        const mimeType = match[1];
+        const b64 = match[2];
+        const prompt = "Проаналізуй фото їжі. Визнач страву та орієнтовну калорійність і БЖУ на порцію, що на фото. " +
+          "Поверни ЛИШЕ JSON без жодного тексту навколо, у форматі: " +
+          '{"name":"назва страви","calories":число,"protein":число,"fat":число,"carbs":число}';
+
+        const resp = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              contents: [{ parts: [{ text: prompt }, { inline_data: { mime_type: mimeType, data: b64 } }] }]
+            })
+          }
+        );
+        const data = await resp.json();
+        if (!resp.ok) throw new Error(data?.error?.message || "Помилка запиту до Gemini");
+
+        let text = (data.candidates?.[0]?.content?.parts?.[0]?.text || "")
+          .replace(/```json|```/g, "").trim();
+        const parsed = JSON.parse(text);
+
+        document.getElementById("fName").value = parsed.name || "";
+        document.getElementById("fCal").value = Math.round(parsed.calories) || "";
+        document.getElementById("fProtein").value = Math.round(parsed.protein) || "";
+        document.getElementById("fFat").value = Math.round(parsed.fat) || "";
+        document.getElementById("fCarb").value = Math.round(parsed.carbs) || "";
+
+        setAiStatus("Готово — перевір і натисни «Додати»", "ok");
+      } catch (err) {
+        console.error(err);
+        setAiStatus("Не вдалось розпізнати: " + err.message, "err");
+      } finally {
+        btn.disabled = false;
+      }
+    });
+
+    // ─── Weight log + chart ───────────────────────────────────────────────────────
+    document.getElementById("addWeightBtn").addEventListener("click", () => {
+      const val = Number(document.getElementById("weightInput").value);
+      if (!val) return;
+      const t = ST.todayStr();
+
+      // Перевіряємо чи є запис за сьогодні — оновлюємо або додаємо
+      const existing = ST.getEntries("weight", e => e.date === t)[0];
+      if (existing) {
+        ST.updateEntry("weight", existing.id, { weight: val }); // ← updateEntry
+      } else {
+        ST.addEntry("weight", { weight: val });                 // ← addEntry
+      }
+      document.getElementById("weightInput").value = "";
+      renderWeightChart();
+    });
+
+    let weightChartInstance = null;
+    function renderWeightChart() {
+      const log = ST.getEntries("weight").sort((a, b) => a.date.localeCompare(b.date));
+      const ctx = document.getElementById("weightChart");
+      const chartData = {
+        labels: log.map(w => w.date.slice(5)),
+        datasets: [{
+          label: "Вага, кг",
+          data: log.map(w => w.weight),
+          borderColor: "#4F7A4A",
+          backgroundColor: "rgba(79,122,74,0.15)",
+          tension: 0.3,
+          fill: true,
+          pointRadius: 3
+        }]
+      };
+      if (weightChartInstance) weightChartInstance.destroy();
+      weightChartInstance = new Chart(ctx, {
+        type: "line", data: chartData,
+        options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: false } } }
+      });
+    }
+
+    // ─── Weekly calories chart ────────────────────────────────────────────────────
+    let weeklyChartInstance = null;
+    function renderWeeklyChart() {
+      const days = [];
+      for (let i = 6; i >= 0; i--) {
+        const d = new Date();
+        d.setDate(d.getDate() - i);
+        days.push(d.toISOString().slice(0, 10));
+      }
+      const totals = days.map(d => ST.getDayTotals(d).calories); // ← getDayTotals
+      const limit = ST.getSettings().goals.calories;
+
+      const ctx = document.getElementById("weeklyChart");
+      const chartData = {
+        labels: days.map(d => d.slice(5)),
+        datasets: [{
+          label: "Калорії",
+          data: totals,
+          backgroundColor: totals.map(t => t > limit ? "#C1473A" : "#4F7A4A")
+        }]
+      };
+      if (weeklyChartInstance) weeklyChartInstance.destroy();
+      weeklyChartInstance = new Chart(ctx, {
+        type: "bar", data: chartData,
+        options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
+      });
+    }
+
+    // ─── Streak ───────────────────────────────────────────────────────────────────
+    function renderStreak() {
+      document.getElementById("streakNum").textContent = ST.computeStreak(); // ← computeStreak
+    }
+
+    // ─── Habits ───────────────────────────────────────────────────────────────────
+    function renderHabits() {
+      const defs = ST.getHabitDefs();
+      const t = ST.todayStr();
+      const weekAgo = new Date();
+      weekAgo.setDate(weekAgo.getDate() - 6);
+      const weekAgoStr = weekAgo.toISOString().slice(0, 10);
+      const weekLog = ST.getHabitLog(weekAgoStr);
+
+      const container = document.getElementById("habitList");
+      container.innerHTML = defs.map(h => {
+        const doneToday = weekLog.some(l => l.date === t && l.habitId === h.id);
+        const weekCount = weekLog.filter(l => l.habitId === h.id).length;
+        const pct = h.targetPerWeek > 0 ? Math.min(100, Math.round((weekCount / h.targetPerWeek) * 100)) : 0;
+        return `
+      <div class="habit-item">
+        <div class="habit-left">
+          <input type="checkbox" data-habit="${h.id}" ${doneToday ? "checked" : ""}>
+          <span>${escapeHtml(h.name)}</span>
+        </div>
+        <span class="habit-pct">${weekCount}/${h.targetPerWeek} цей тиждень · ${pct}%</span>
+      </div>
+    `;
+      }).join("");
+
+      container.querySelectorAll("input[type=checkbox]").forEach(cb => {
+        cb.addEventListener("change", () => {
+          ST.toggleHabit(cb.dataset.habit, cb.checked); // ← toggleHabit
+          renderHabits();
+        });
+      });
+    }
+
+    // ─── Render all ───────────────────────────────────────────────────────────────
+    function renderAll() {
+      renderFoodList();
+      renderSummary();
+      renderWeightChart();
+      renderWeeklyChart();
+      renderStreak();
+      renderHabits();
+    }
+
+    // ─── Bootstrap ───────────────────────────────────────────────────────────────
+    loadGoalsForm();
+    loadApiKeyField();
+    renderAll();
+  </script>
+</body>
+
+</html>
