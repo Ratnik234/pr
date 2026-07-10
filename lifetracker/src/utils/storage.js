@@ -1,6 +1,6 @@
 import { openDB } from 'idb';
 
-const API_URL = 'https://pr-gbd9.vercel.app/api';
+const API_URL = 'https://pr-ten-rust.vercel.app';
 
 let dbPromise;
 export async function getDB() {
