@@ -78,6 +78,19 @@ app.get('/api/users/:id', async (req, res) => {
 
 
 // --- Sync Route ---
+// Maps each frontend collection name to its Prisma model.
+const COLLECTION_MODEL = {
+  calories: 'meal',
+  tasks: 'task',
+  notes: 'note',
+  workouts: 'workout',
+  calendarEvents: 'calendarEvent',
+  water: 'waterLog',
+  weight: 'weightLog',
+  settings: 'setting',
+  statistics: 'statistic'
+};
+
 app.post('/api/sync', async (req, res) => {
   const { userId, operations } = req.body;
   if (!userId) return res.status(401).json({ error: 'Unauthorized' });
@@ -86,37 +99,27 @@ app.post('/api/sync', async (req, res) => {
     // Process operations sequentially
     for (const op of operations) {
       const { type, collection, data, id } = op;
+      const modelName = COLLECTION_MODEL[collection];
+
+      if (!modelName) {
+        console.error(`Unknown sync collection: ${collection}`);
+        continue;
+      }
+
+      const model = prisma[modelName];
 
       try {
-        switch (collection) {
-          case 'calories':
-            if (type === 'CREATE') {
-              await prisma.meal.upsert({
-                where: { id: data.id },
-                update: { ...data, userId },
-                create: { ...data, userId }
-              });
-            } else if (type === 'UPDATE') {
-              await prisma.meal.updateMany({ where: { id, userId }, data });
-            } else if (type === 'DELETE') {
-              await prisma.meal.deleteMany({ where: { id, userId } });
-            }
-            break;
-
-          case 'weight':
-            if (type === 'CREATE' || type === 'UPDATE') {
-              const weightId = data.id || id;
-              await prisma.statistic.upsert({
-                where: { id: weightId },
-                update: { distance: data.weight }, // weight maps to distance here? No wait!
-                // Let's just create proper weight fields, wait, schema has Profile.weight, but we need weight log!
-                // Ah, let's fix the schema for weight log. We can use a new model WeightLog or put it in Statistic.
-                // Let's use Profile weight or create WeightLog. Let's create WeightLog.
-                create: {}
-              });
-            }
-            break;
-          // Add other collections...
+        if (type === 'CREATE') {
+          const recordId = data.id || id;
+          await model.upsert({
+            where: { id: recordId },
+            update: { ...data, id: recordId, userId },
+            create: { ...data, id: recordId, userId }
+          });
+        } else if (type === 'UPDATE') {
+          await model.updateMany({ where: { id, userId }, data });
+        } else if (type === 'DELETE') {
+          await model.deleteMany({ where: { id, userId } });
         }
       } catch (opError) {
         console.error(`Error processing operation ${type} on ${collection}:`, opError);
@@ -141,6 +144,9 @@ app.post('/api/sync/pull', async (req, res) => {
       tasks: await prisma.task.findMany({ where: { userId } }),
       notes: await prisma.note.findMany({ where: { userId } }),
       workouts: await prisma.workout.findMany({ where: { userId } }),
+      calendarEvents: await prisma.calendarEvent.findMany({ where: { userId } }),
+      water: await prisma.waterLog.findMany({ where: { userId } }),
+      weight: await prisma.weightLog.findMany({ where: { userId } }),
       settings: await prisma.setting.findMany({ where: { userId } }),
       statistics: await prisma.statistic.findMany({ where: { userId } })
     };
@@ -156,38 +162,17 @@ app.post('/api/sync/push', async (req, res) => {
   if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
   try {
-    // To make it simple, we can delete and re-insert or use upserts.
-    // For a robust offline-first app, we should use upserts.
+    // For a robust offline-first app, we use upserts for every known collection.
+    for (const [collection, modelName] of Object.entries(COLLECTION_MODEL)) {
+      const rows = data[collection];
+      if (!rows) continue;
 
-    // Process Tasks
-    if (data.tasks) {
-      for (const t of data.tasks) {
-        await prisma.task.upsert({
-          where: { id: t.id },
-          update: { ...t, userId },
-          create: { ...t, userId }
-        });
-      }
-    }
-
-    // Process Notes
-    if (data.notes) {
-      for (const n of data.notes) {
-        await prisma.note.upsert({
-          where: { id: n.id },
-          update: { ...n, userId },
-          create: { ...n, userId }
-        });
-      }
-    }
-
-    // Process Meals (Calories)
-    if (data.calories) {
-      for (const m of data.calories) {
-        await prisma.meal.upsert({
-          where: { id: m.id },
-          update: { ...m, userId },
-          create: { ...m, userId }
+      const model = prisma[modelName];
+      for (const row of rows) {
+        await model.upsert({
+          where: { id: row.id },
+          update: { ...row, userId },
+          create: { ...row, userId }
         });
       }
     }
