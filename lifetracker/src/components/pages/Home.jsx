@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { CheckCircle2, Flame, Droplet, Smile, Plus, Utensils, FileText, Activity, Heart, Zap, X, AlertTriangle } from 'lucide-react'
 import { getEntries, getDayTotals, getSettings, todayStr, addEntry, getActivityLog, getWorkouts, getCurrentUserInfo } from '../../utils/storage'
 import { useTranslation } from 'react-i18next'
@@ -184,10 +185,11 @@ function WarningsBanner({ activity, totals, goals, water }) {
 }
 
 export default function Home() {
+  const navigate = useNavigate()
   const { t } = useTranslation()
-  const [tasks, setTasks]   = useState([])
+  const [tasks, setTasks] = useState([])
   const [totals, setTotals] = useState({ calories: 0 })
-  const [goals, setGoals]   = useState({ calories: 2200 })
+  const [goals, setGoals] = useState({ calories: 2200 })
   const [habits, setHabits] = useState([])
   const [habitLog, setHabitLog] = useState([])
   const [activity, setActivity] = useState({ steps: 0, distance: 0, caloriesBurned: 0 })
@@ -224,7 +226,7 @@ export default function Home() {
     if (s?.waterLog) {
       setWater(s.waterLog[today] || 0)
     }
-    
+
     // Sum workout calories
     const calsBurned = works.filter(w => w.date === today).reduce((sum, w) => sum + (w.calories_burned || 0), 0)
     setActivity({
@@ -236,8 +238,8 @@ export default function Home() {
 
   useEffect(() => { reloadData() }, [])  // eslint-disable-line react-hooks/exhaustive-deps
 
-  const completedTasks    = tasks.filter(t => t.completed).length
-  const totalTasks        = tasks.length
+  const completedTasks = tasks.filter(t => t.completed).length
+  const totalTasks = tasks.length
   const remainingCalories = Math.max(0, goals.calories - totals.calories)
 
   return (
@@ -282,9 +284,9 @@ export default function Home() {
             {t('home.quickActions', 'Quick Actions')}
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <QuickActionButton label={t('home.logWorkout', 'Add Task')}  Icon={Plus}     colorClass="text-violet-400" delay="anim-delay-2" onClick={() => setShowTaskModal(true)} />
-            <QuickActionButton label={t('home.addCalories', 'Add Meal')}  Icon={Utensils} colorClass="text-orange-400" delay="anim-delay-3" onClick={() => { window.location.href = '/calories' }} />
-            <QuickActionButton label={t('home.addNote', 'Add Note')}  Icon={FileText} colorClass="text-sky-400"    delay="anim-delay-4" onClick={() => setShowNoteModal(true)} />
+            <QuickActionButton label={t('home.logWorkout', 'Add Task')} Icon={Plus} colorClass="text-violet-400" delay="anim-delay-2" onClick={() => setShowTaskModal(true)} />
+            <QuickActionButton label={t('home.addCalories', 'Add Meal')} Icon={Utensils} colorClass="text-orange-400" delay="anim-delay-3" onClick={() => navigate('/calories')} />
+            <QuickActionButton label={t('home.addNote', 'Add Note')} Icon={FileText} colorClass="text-sky-400" delay="anim-delay-4" onClick={() => setShowNoteModal(true)} />
           </div>
         </section>
 
@@ -322,9 +324,9 @@ export default function Home() {
             Recent Activities
           </h2>
           <div className="space-y-3">
-            <ActivityCard title="Morning Run"         description="5.2 km · 342 kcal burned" time="09:14 AM" Icon={Activity} colorClass="text-violet-400" delay="anim-delay-3" />
-            <ActivityCard title="Healthy Lunch"       description="Chicken salad · 480 kcal" time="12:30 PM" Icon={Heart}    colorClass="text-pink-400"   delay="anim-delay-4" />
-            <ActivityCard title="Deep Work Session"   description="Completed 2 tasks"         time="02:15 PM" Icon={Zap}      colorClass="text-amber-400"  delay="anim-delay-5" />
+            <ActivityCard title="Morning Run" description="5.2 km · 342 kcal burned" time="09:14 AM" Icon={Activity} colorClass="text-violet-400" delay="anim-delay-3" />
+            <ActivityCard title="Healthy Lunch" description="Chicken salad · 480 kcal" time="12:30 PM" Icon={Heart} colorClass="text-pink-400" delay="anim-delay-4" />
+            <ActivityCard title="Deep Work Session" description="Completed 2 tasks" time="02:15 PM" Icon={Zap} colorClass="text-amber-400" delay="anim-delay-5" />
           </div>
         </section>
 
