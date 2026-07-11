@@ -4,11 +4,11 @@ import { useTranslation } from 'react-i18next'
 import useStore from '../../store/useStore'
 
 const NAV = [
-  { id: 'home',       path: '/',           label: 'Home',       Icon: Home,      badge: null,  dot: false },
-  { id: 'calendar',   path: '/calendar',   label: 'Calendar',   Icon: Calendar,  badge: 3,     dot: false },
-  { id: 'calories',   path: '/calories',   label: 'Calories',   Icon: Apple,     badge: null,  dot: true  },
-  { id: 'statistics', path: '/statistics', label: 'Statistics', Icon: BarChart2, badge: null,  dot: false },
-  { id: 'settings',   path: '/settings',   label: 'Settings',   Icon: Settings,  badge: null,  dot: false },
+  { id: 'home', path: '/', label: 'Home', Icon: Home, badge: null, dot: false },
+  { id: 'calendar', path: '/calendar', label: 'Calendar', Icon: Calendar, badge: 3, dot: false },
+  { id: 'calories', path: '/calories', label: 'Calories', Icon: Apple, badge: null, dot: true },
+  { id: 'statistics', path: '/statistics', label: 'Statistics', Icon: BarChart2, badge: null, dot: false },
+  { id: 'settings', path: '/settings', label: 'Settings', Icon: Settings, badge: null, dot: false },
 ]
 
 // ─── Logo ─────────────────────────────────────────────────────────────────────
@@ -85,82 +85,6 @@ function NavItem({ item, onClick }) {
   )
 }
 
-// ─── Score Card ───────────────────────────────────────────────────────────────
-function ScoreCard({ item }) {
-  const score = 78
-  const r = 28
-  const circ = 2 * Math.PI * r
-  const offset = circ - (circ * score) / 100
-  return (
-    <div
-      className="mx-3 mb-4 rounded-[18px] p-4"
-      style={{
-        background: 'linear-gradient(135deg,rgba(124,58,237,0.18),rgba(99,102,241,0.10))',
-        border: '1px solid rgba(124,58,237,0.22)',
-      }}
-    >
-      <div className="flex items-center gap-3">
-        <div className="relative flex-shrink-0 w-16 h-16">
-          <svg width="64" height="64" viewBox="0 0 64 64" className="-rotate-90" aria-hidden="true">
-            <circle cx="32" cy="32" r={r} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="5" />
-            <circle
-              cx="32" cy="32" r={r}
-              fill="none"
-              stroke="url(#scoreGrad)"
-              strokeWidth="5"
-              strokeLinecap="round"
-              strokeDasharray={circ}
-              strokeDashoffset={offset}
-              style={{ transition: 'stroke-dashoffset 1.4s cubic-bezier(.4,0,.2,1)' }}
-            />
-            <defs>
-              <linearGradient id="scoreGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-                <stop offset="0%" stopColor="#7c3aed" />
-                <stop offset="100%" stopColor="#c084fc" />
-              </linearGradient>
-            </defs>
-          </svg>
-          <div className="absolute inset-0 flex flex-col items-center justify-center">
-            <span className="text-base font-bold" style={{ color: '#e9d5ff' }}>{score}</span>
-          </div>
-        </div>
-        <div className="min-w-0">
-          <p className="text-sm font-semibold" style={{ color: '#e9d5ff' }}>{item?.tHealthScore || 'Health Score'}</p>
-          <p className="text-[11px] mt-0.5" style={{ color: 'var(--t-2)' }}>{item?.tExcellentDay || 'Excellent day!'}</p>
-          <p className="text-[10px] mt-2 font-medium" style={{ color: '#a78bfa' }}>+4 pts from yesterday</p>
-        </div>
-      </div>
-    </div>
-  )
-}
-
-// ─── User Profile Footer ──────────────────────────────────────────────────────
-function ProfileFooter() {
-  return (
-    <div className="px-3 pb-5">
-      <div
-        className="flex items-center gap-3 p-3 rounded-[16px] cursor-pointer hover:brightness-110 transition-all duration-200"
-        style={{ background: 'var(--bg-hover)', border: '1px solid var(--border)' }}
-      >
-        <div
-          className="w-9 h-9 rounded-[12px] flex items-center justify-center flex-shrink-0"
-          style={{ background: 'linear-gradient(135deg,#7c3aed,#ec4899)' }}
-        >
-          <span className="text-sm font-bold text-white">AJ</span>
-        </div>
-        <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold truncate" style={{ color: 'var(--t-1)' }}>Alex Johnson</p>
-          <p className="text-[11px] truncate" style={{ color: 'var(--t-3)' }}>Pro Plan · Active</p>
-        </div>
-        <div
-          className="w-2 h-2 rounded-full flex-shrink-0"
-          style={{ background: 'var(--emerald)' }}
-          aria-label="online"
-        />
-      </div>
-    </div>
-  )
-}
 
 // ─── Sidebar ──────────────────────────────────────────────────────────────────
 export default function Sidebar({ isOpen, onClose }) {
@@ -254,7 +178,7 @@ export default function Sidebar({ isOpen, onClose }) {
         </nav>
 
         <ScoreCard item={{ tHealthScore: t('menu.healthScore'), tExcellentDay: t('menu.excellentDay') }} />
-        
+
         <div className="px-3 pb-5">
           <div
             className="flex items-center gap-3 p-3 rounded-[16px] cursor-pointer hover:brightness-110 transition-all duration-200"

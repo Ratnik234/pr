@@ -231,6 +231,8 @@ export async function getSettings() {
     goals: map.goals ?? { calories: 2200, protein: 120, fat: 70, carbs: 250 },
     waterLog: map.waterLog ?? {},
     profile: map.profile ?? { height: '', weight: '', age: '', gender: 'male', activityLevel: 'medium' },
+    avatar: map.avatar ?? null,
+    isVip: map.isVip ?? false,
   };
 }
 

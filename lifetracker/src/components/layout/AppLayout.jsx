@@ -10,13 +10,14 @@ import CaloriesPage from '../pages/Calories'
 import StatisticsPage from '../pages/Statistics'
 import SettingsPage from '../pages/Settings'
 import GlobalModals from './GlobalModals'
+import ProfilePage from '../pages/Profile'
 
 export default function AppLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [activeModal, setActiveModal] = useState(null)
 
   const handleMenuOpen = useCallback(() => setSidebarOpen(true), [])
-  const handleMenuClose= useCallback(() => setSidebarOpen(false), [])
+  const handleMenuClose = useCallback(() => setSidebarOpen(false), [])
   const openModal = useCallback((type) => setActiveModal(type), [])
   const closeModal = useCallback(() => setActiveModal(null), [])
 
@@ -46,13 +47,14 @@ export default function AppLayout() {
         {/* ── Main column ── */}
         <div className="flex flex-col flex-1 min-w-0 min-h-dvh">
           <Header onMenuOpen={handleMenuOpen} onOpenModal={openModal} />
-          
+
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/calendar" element={<CalendarPage />} />
             <Route path="/calories" element={<CaloriesPage />} />
             <Route path="/statistics" element={<StatisticsPage />} />
             <Route path="/settings" element={<SettingsPage />} />
+            <Route path="/profile" element={<ProfilePage />} />
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </div>
