@@ -1,17 +1,18 @@
 import { NavLink, useNavigate } from 'react-router-dom'
 import { Home, Calendar, Apple, BarChart2, Settings, X, Activity, Plus } from 'lucide-react'
-
+import { useTranslation } from 'react-i18next'
 
 const NAV = [
-  { id: 'home', path: '/', label: 'Home', Icon: Home, badge: null, dot: false },
-  { id: 'calendar', path: '/calendar', label: 'Calendar', Icon: Calendar, badge: 3, dot: false },
-  { id: 'calories', path: '/calories', label: 'Calories', Icon: Apple, badge: null, dot: true },
-  { id: 'statistics', path: '/statistics', label: 'Statistics', Icon: BarChart2, badge: null, dot: false },
-  { id: 'settings', path: '/settings', label: 'Settings', Icon: Settings, badge: null, dot: false },
+  { id: 'home', path: '/', labelKey: 'nav.home', Icon: Home, badge: null, dot: false },
+  { id: 'calendar', path: '/calendar', labelKey: 'nav.calendar', Icon: Calendar, badge: 3, dot: false },
+  { id: 'calories', path: '/calories', labelKey: 'nav.calories', Icon: Apple, badge: null, dot: true },
+  { id: 'statistics', path: '/statistics', labelKey: 'nav.stats', Icon: BarChart2, badge: null, dot: false },
+  { id: 'settings', path: '/settings', labelKey: 'nav.settings', Icon: Settings, badge: null, dot: false },
 ]
 
 // ─── Logo ─────────────────────────────────────────────────────────────────────
 function Logo() {
+  const { t } = useTranslation()
   return (
     <div className="flex items-center gap-3 px-4 pt-7 pb-6">
       <div className="relative flex-shrink-0">
@@ -30,7 +31,7 @@ function Logo() {
       <div>
         <p className="text-[15px] font-bold tracking-tight gradient-brand leading-none">LifeTracker</p>
         <p className="text-[10px] font-semibold uppercase tracking-[0.12em] mt-1" style={{ color: 'var(--t-3)' }}>
-          Wellness Dashboard
+          {t('sidebar.wellnessDashboard')}
         </p>
       </div>
     </div>
@@ -48,7 +49,8 @@ function SectionLabel({ children }) {
 
 // ─── Nav Item ─────────────────────────────────────────────────────────────────
 function NavItem({ item, onClick }) {
-  const { path, label, Icon, badge, dot } = item
+  const { t } = useTranslation()
+  const { path, labelKey, Icon, badge, dot } = item
   return (
     <li>
       <NavLink
@@ -61,7 +63,7 @@ function NavItem({ item, onClick }) {
             <span className="nav-icon flex-shrink-0" style={{ color: isActive ? '#a78bfa' : 'var(--t-2)' }}>
               <Icon size={18} />
             </span>
-            <span className="flex-1 leading-none">{label}</span>
+            <span className="flex-1 leading-none">{t(labelKey)}</span>
             {badge !== null && (
               <span
                 className="flex items-center justify-center text-[10px] font-bold rounded-full min-w-[20px] h-5 px-1.5"
@@ -86,6 +88,7 @@ function NavItem({ item, onClick }) {
 
 
 export default function Sidebar({ isOpen, onClose, onOpenModal }) {
+  const { t } = useTranslation()
   const navigate = useNavigate()
 
 
@@ -114,7 +117,7 @@ export default function Sidebar({ isOpen, onClose, onOpenModal }) {
 
         {/* Nav */}
         <nav aria-label="Primary navigation" className="flex-1 overflow-y-auto px-3 pb-4">
-          <SectionLabel>Menu</SectionLabel>
+          <SectionLabel>{t('sidebar.menu')}</SectionLabel>
           <ul role="list" className="space-y-1">
             {NAV.map((item) => (
               <NavItem
@@ -127,14 +130,14 @@ export default function Sidebar({ isOpen, onClose, onOpenModal }) {
 
           {/* Quick actions */}
           <div className="mt-6 mb-3">
-            <SectionLabel>Quick Actions</SectionLabel>
+            <SectionLabel>{t('menu.quickActions')}</SectionLabel>
           </div>
           <div className="space-y-2 px-1">
             {[
-              { label: 'Add Task', color: '#7c3aed', action: () => { onOpenModal('task'); onClose() } },
-              { label: 'Log Meal', color: '#f97316', action: () => { onOpenModal('meal'); onClose() } },
-              { label: 'Add Water', color: '#0ea5e9', action: () => { onOpenModal('water'); onClose() } },
-              { label: 'View Calendar', color: '#10b981', action: () => { navigate('/calendar'); onClose() } },
+              { label: t('sidebar.addTask'), color: '#7c3aed', action: () => { onOpenModal('task'); onClose() } },
+              { label: t('sidebar.logMeal'), color: '#f97316', action: () => { onOpenModal('meal'); onClose() } },
+              { label: t('sidebar.addWater'), color: '#0ea5e9', action: () => { onOpenModal('water'); onClose() } },
+              { label: t('sidebar.viewCalendar'), color: '#10b981', action: () => { navigate('/calendar'); onClose() } },
             ].map(({ label, color, action }) => (
               <button
                 key={label}

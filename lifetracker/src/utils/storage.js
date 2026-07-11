@@ -161,18 +161,27 @@ export async function performFullSync() {
     const data = await res.json();
     if (!data.error) {
       const db = await getDB();
-      // Store all fetched data to local IndexedDB
-      if (data.calories) {
-        const tx = db.transaction('calories', 'readwrite');
-        tx.store.clear();
-        data.calories.forEach(item => tx.store.put(item));
+      const simpleCollections = ['calories', 'tasks', 'notes', 'workouts', 'weight'];
+      for (const collection of simpleCollections) {
+        if (data[collection]) {
+          const tx = db.transaction(collection, 'readwrite');
+          await tx.store.clear();
+          for (const item of data[collection]) {
+            await tx.store.put(item);
+          }
+          await tx.done;
+        }
       }
-      if (data.tasks) {
-        const tx = db.transaction('tasks', 'readwrite');
-        tx.store.clear();
-        data.tasks.forEach(item => tx.store.put(item));
+
+      if (data.settings) {
+        const tx = db.transaction('settings', 'readwrite');
+        for (const row of data.settings) {
+          let value = row.value;
+          try { value = JSON.parse(row.value); } catch (e) { /* plain string, keep as-is */ }
+          await tx.store.put({ key: row.key, value });
+        }
+        await tx.done;
       }
-      // Continue for other stores as needed...
     }
   } catch (e) {
     console.warn('Pull sync failed', e);
@@ -239,15 +248,27 @@ export async function getSettings() {
 export async function updateSettings(patch) {
   const db = await getDB();
   const tx = db.transaction('settings', 'readwrite');
+  const userId = getCurrentUser();
   for (const [k, v] of Object.entries(patch)) {
     if (v !== undefined) {
+      let valueToStore = v;
       if (k === 'goals') {
         const existing = await tx.store.get('goals');
-        tx.store.put({ key: 'goals', value: { ...(existing?.value || {}), ...v } });
-      } else {
-        tx.store.put({ key: k, value: v });
+        valueToStore = { ...(existing?.value || {}), ...v };
       }
-      await addSyncOp({ type: 'UPDATE_SETTING', key: k, value: v });
+      tx.store.put({ key: k, value: valueToStore });
+
+      if (userId) {
+        await addSyncOp({
+          type: 'CREATE',
+          collection: 'settings',
+          data: {
+            id: `${userId}_${k}`,
+            key: k,
+            value: JSON.stringify(valueToStore)
+          }
+        });
+      }
     }
   }
   await tx.done;

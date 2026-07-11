@@ -1,6 +1,6 @@
 import { useMemo, useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Search as SearchIcon, Bell, Menu, Plus, Activity, User, LogOut } from 'lucide-react'
+import { Bell, Menu, Activity, User, LogOut } from 'lucide-react'
 import { getCurrentUserInfo, getSettings } from '../../utils/storage'
 
 function useDate() {
@@ -13,38 +13,6 @@ function useDate() {
   }, [])
 }
 
-// ─── Search ───────────────────────────────────────────────────────────────────
-function Search() {
-  return (
-    <div className="relative hidden sm:flex items-center">
-      <label htmlFor="global-search" className="sr-only">Search</label>
-      <div
-        className="flex items-center gap-2 px-3 py-2 rounded-[14px] transition-all duration-200 focus-within:ring-1"
-        style={{
-          background: 'var(--bg-raised)',
-          border: '1px solid var(--border)',
-          width: 220,
-          '--tw-ring-color': 'rgba(124,58,237,0.45)',
-        }}
-      >
-        <SearchIcon size={15} className="flex-shrink-0" style={{ color: 'var(--t-3)' }} />
-        <input
-          id="global-search"
-          type="search"
-          placeholder="Search…"
-          className="flex-1 bg-transparent text-[13px] outline-none placeholder:text-[var(--t-3)]"
-          style={{ color: 'var(--t-1)', minWidth: 0 }}
-        />
-        <kbd
-          className="hidden md:inline-flex items-center gap-0.5 text-[10px] font-mono px-1.5 py-0.5 rounded-md flex-shrink-0"
-          style={{ background: 'var(--bg-hover)', color: 'var(--t-3)', border: '1px solid var(--border)' }}
-        >
-          ⌘K
-        </kbd>
-      </div>
-    </div>
-  )
-}
 
 // ─── Date Badge ───────────────────────────────────────────────────────────────
 function DateBadge({ weekday, dateStr, isoDate }) {
@@ -57,22 +25,6 @@ function DateBadge({ weekday, dateStr, isoDate }) {
         {weekday}
       </time>
     </div>
-  )
-}
-
-
-// ─── Add Button ───────────────────────────────────────────────────────────────
-function AddButton({ onClick }) {
-  return (
-    <button
-      id="header-add"
-      onClick={onClick}
-      aria-label="Quick add"
-      className="btn-primary hidden sm:flex items-center gap-1.5 text-[13px] px-3.5 py-2 rounded-[12px]"
-    >
-      <Plus size={14} />
-      <span>Add</span>
-    </button>
   )
 }
 
@@ -204,9 +156,6 @@ export default function Header({ onMenuOpen, onOpenModal }) {
 
       {/* ── Right zone ── */}
       <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
-        <Search />
-        <AddButton onClick={() => onOpenModal('task')} />
-        <div className="hidden sm:block w-px h-5" style={{ background: 'var(--border)' }} aria-hidden="true" />
         <Avatar username={username} avatarUrl={avatarUrl} />
       </div>
     </header>

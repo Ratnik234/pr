@@ -66,9 +66,22 @@ const resources = {
         increaseWeightDesc: "You have been lifting {{weight}}kg for a while. Consider increasing by 2.5-5kg.",
         noProgress: "Plateau Detected",
         noProgressDesc: "Your lifting weight hasn't changed in a month. Consider a new training program."
+      },
+      sidebar: {
+        wellnessDashboard: "Wellness Dashboard",
+        menu: "Menu",
+        addTask: "Add Task",
+        logMeal: "Log Meal",
+        addWater: "Add Water",
+        viewCalendar: "View Calendar",
+        ptsFromYesterday: "+{{pts}} pts from yesterday",
+        myAccount: "My Account",
+        active: "Active",
+        logout: "Logout"
       }
     }
   },
+
   ua: {
     translation: {
       menu: {
@@ -143,6 +156,18 @@ const resources = {
         increaseWeightDesc: "Ви піднімаєте {{weight}}кг вже деякий час. Спробуйте додати 2.5-5кг.",
         noProgress: "Застій у прогресі",
         noProgressDesc: "Ваша робоча вага не змінювалась вже місяць. Спробуйте змінити програму тренувань."
+      },
+      sidebar: {
+        wellnessDashboard: "Панель здоров'я",
+        menu: "Меню",
+        addTask: "Додати задачу",
+        logMeal: "Додати їжу",
+        addWater: "Додати воду",
+        viewCalendar: "Переглянути календар",
+        ptsFromYesterday: "+{{pts}} балів з учора",
+        myAccount: "Мій акаунт",
+        active: "Активний",
+        logout: "Вийти"
       }
     }
   }
@@ -155,7 +180,7 @@ i18n
     lng: localStorage.getItem('app_lang') || 'ua',
     fallbackLng: 'en',
     interpolation: {
-      escapeValue: false 
+      escapeValue: false
     }
   });
 
