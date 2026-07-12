@@ -164,7 +164,7 @@ export default function CaloriesPage() {
       className="flex-1 overflow-y-auto"
       style={{ minHeight: 0 }}
     >
-      <div className="max-w-[1200px] mx-auto px-4 sm:px-6 py-8 space-y-8" style={{ paddingBottom: 'calc(6rem + 24px)' }}>
+      <div className="w-full px-6 lg:px-8 xl:px-10 2xl:px-12 py-8 space-y-8" style={{ paddingBottom: 'calc(6rem + 24px)' }}>
 
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 anim-down">
