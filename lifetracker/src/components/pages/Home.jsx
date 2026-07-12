@@ -69,7 +69,7 @@ function AddTaskModal({ onClose, onAdd }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm anim-up">
       <div className="w-full max-w-sm p-6 rounded-[24px] shadow-2xl glass-card relative" style={{ background: 'var(--bg-panel)' }}>
-        <button onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors">
+        <button onClick={onClose} className="absolute top-4 right-4 transition-colors" style={{ color: 'var(--t-3)' }} onMouseEnter={e => e.currentTarget.style.color = 'var(--t-1)'} onMouseLeave={e => e.currentTarget.style.color = 'var(--t-3)'}>
           <X size={20} />
         </button>
         <h2 className="text-xl font-bold mb-6" style={{ color: 'var(--t-1)' }}>Add New Task</h2>
@@ -102,7 +102,7 @@ function AddNoteModal({ onClose, onAdd }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm anim-up">
       <div className="w-full max-w-sm p-6 rounded-[24px] shadow-2xl glass-card relative" style={{ background: 'var(--bg-panel)' }}>
-        <button onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors">
+        <button onClick={onClose} className="absolute top-4 right-4 transition-colors" style={{ color: 'var(--t-3)' }} onMouseEnter={e => e.currentTarget.style.color = 'var(--t-1)'} onMouseLeave={e => e.currentTarget.style.color = 'var(--t-3)'}>
           <X size={20} />
         </button>
         <h2 className="text-xl font-bold mb-6" style={{ color: 'var(--t-1)' }}>Add New Note</h2>
