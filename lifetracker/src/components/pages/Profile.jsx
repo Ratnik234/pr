@@ -100,15 +100,16 @@ export default function ProfilePage() {
                             ) : (
                                 <span className="text-2xl font-bold text-white select-none">{initial}</span>
                             )}
-                            {uploading && (
-                                <div className="absolute inset-0 flex items-center justify-center bg-black/40">
-                                    <div className="w-5 h-5 rounded-full border-2 border-white/30 border-t-white animate-spin" />
-                                </div>
-                                <span
-                                    className="absolute bottom-1 right-1 w-4 h-4 rounded-full border-2"
-                                    style={{ background: 'var(--emerald)', borderColor: 'var(--bg-panel)' }}
-                                    aria-hidden="true"
-                               />
+                           {uploading && (
+                               <div className="absolute inset-0 flex items-center justify-center bg-black/40">
+                                   <div className="w-5 h-5 rounded-full border-2 border-white/30 border-t-white animate-spin" />
+                               </div>
+                            )}
+                            <span
+                                className="absolute bottom-1 right-1 w-4 h-4 rounded-full border-2"
+                                style={{ background: 'var(--emerald)', borderColor: 'var(--bg-panel)' }}
+                                aria-hidden="true"
+                       />
                             )}
                         </div>
                         <button
