@@ -35,14 +35,14 @@ function SettingsItem({ icon: Icon, title, description, rightElement, onClick, i
       <div className="flex items-center gap-4">
         <div className={clsx(
           "w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 border border-white/5",
-          isDestructive ? "bg-red-500/10 text-red-400 shadow-[0_0_12px_rgba(239,68,68,0.15)]" : "bg-white/5 text-gray-300"
+          isDestructive ? "bg-red-500/10 text-red-400 shadow-[0_0_12px_rgba(239,68,68,0.15)]" : "bg-white/5"
         )}>
           <Icon size={18} />
         </div>
         <div>
-          <p className={clsx("text-[15px] font-semibold", isDestructive ? "text-red-400" : "text-gray-200")}>{title}</p>
+          <p className="text-[15px] font-semibold" style={{ color: isDestructive ? '#f87171' : 'var(--t-1)' }}>{title}</p>
           {description && (
-            <p className="text-[12px] text-gray-400 mt-0.5">{description}</p>
+             <p className="text-[12px] mt-0.5" style={{ color: 'var(--t-3)' }}>{description}</p>
           )}
         </div>
       </div>
@@ -52,7 +52,7 @@ function SettingsItem({ icon: Icon, title, description, rightElement, onClick, i
         </div>
       )}
       {!rightElement && onClick && (
-        <ChevronRight size={18} className="text-gray-500 flex-shrink-0" />
+        <ChevronRight size={18} className="flex-shrink-0" style={{ color: 'var(--t-3)' }} />
       )}
     </Component>
   )
