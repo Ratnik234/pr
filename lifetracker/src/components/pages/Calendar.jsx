@@ -273,8 +273,9 @@ export default function CalendarPage() {
             <div className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--border)' }}>
               {/* Days Header */}
               <div className="grid grid-cols-7 border-b" style={{ borderColor: 'var(--border)', background: 'var(--bg-raised)' }}>
-                {DAYS_OF_WEEK.map(day => (
-                  <div key={day} className="py-3 text-center text-[11px] font-bold uppercase tracking-wider" style={{ color: 'var(--t-3)' }}>
+                {DAYS_OF_WEEK.map((day, i) => (
+                  <div key={day} className="py-3 text-center text-[11px] font-bold uppercase tracking-wider"
+                       style={{ color: (i === 0 || i === 6) ? '#f87171' : 'var(--t-3)' }}>
                     {day}
                   </div>
                 ))}
@@ -285,6 +286,7 @@ export default function CalendarPage() {
                   const today       = isToday(dayObj.date)
                   const selected    = isSelected(dayObj.date)
                   const hasActivity = hasData(dayObj.date)
+                  const isWeekend   = dayObj.date.getDay() === 0 || dayObj.date.getDay() === 6
                   return (
                     <div
                       key={i}
@@ -294,15 +296,16 @@ export default function CalendarPage() {
                         !dayObj.isCurrentMonth && "opacity-40",
                         selected ? "brightness-110" : ""
                       )}
-                      style={{ background: 'var(--bg-card)' }}
+                      style={{ background: isWeekend ? 'var(--bg-raised)' : 'var(--bg-card)' }}
                     >
                       <div className="flex justify-end mb-1">
                         <span
+                          style={!today && !selected && isWeekend ? { color: '#f87171' } : undefined}
                           className={clsx(
                             "w-7 h-7 flex items-center justify-center rounded-full text-sm font-semibold transition-all duration-200",
                             today && !selected && "bg-indigo-500/20 text-indigo-400",
                             selected && "bg-indigo-600 text-white shadow-[0_4px_12px_rgba(79,70,229,0.5)] scale-110",
-                            !today && !selected && "text-gray-300 group-hover:bg-white/10"
+                            !today && !selected && (isWeekend ? "group-hover:bg-white/10" : "text-gray-300 group-hover:bg-white/10")
                           )}
                         >
                           {dayObj.date.getDate()}
@@ -349,7 +352,7 @@ export default function CalendarPage() {
                             className="w-4 h-4 rounded text-indigo-500 focus:ring-indigo-500 bg-black/20 border-white/20"
                           />
                           <div className="flex-1 min-w-0">
-                            <span className={clsx("text-[13px] transition-colors block truncate", task.completed ? "text-gray-400 line-through" : "text-gray-200")}>
+                            <span className="text-[13px] transition-colors block truncate" style={{ color: task.completed ? 'var(--t-3)' : 'var(--t-1)', textDecoration: task.completed ? 'line-through' : 'none' }}>
                               {task.title}
                             </span>
                             {(task.start_time || task.end_time) && (
@@ -371,7 +374,7 @@ export default function CalendarPage() {
                     ))}
                   </div>
                 ) : (
-                  <p className="text-[12px] text-gray-500 italic">No tasks for this day.</p>
+                  <p className="text-[12px] italic" style={{ color: 'var(--t-3)' }}>No tasks for this day.</p>
                 )}
               </div>
 
@@ -385,15 +388,15 @@ export default function CalendarPage() {
                     {meals.map(meal => (
                       <div key={meal.id} className="flex flex-col gap-1 p-3 rounded-xl border border-transparent hover:border-white/10 transition-colors" style={{ background: 'var(--bg-raised)' }}>
                         <div className="flex justify-between items-center">
-                          <span className="text-[13px] font-semibold text-gray-200">{meal.name}</span>
-                          <span className="text-[11px] font-mono text-gray-400">{meal.calories} kcal</span>
+                          <span className="text-[13px] font-semibold" style={{ color: 'var(--t-1)' }}>{meal.name}</span>
+                          <span className="text-[11px] font-mono" style={{ color: 'var(--t-3)' }}>{meal.calories} kcal</span>
                         </div>
-                        <span className="text-[12px] text-gray-400">P {meal.protein}g · F {meal.fat}g · C {meal.carbs}g</span>
+                        <span className="text-[12px]" style={{ color: 'var(--t-3)' }}>P {meal.protein}g · F {meal.fat}g · C {meal.carbs}g</span>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <p className="text-[12px] text-gray-500 italic">No meals logged.</p>
+                  <p className="text-[12px] italic" style={{ color: 'var(--t-3)' }}>No meals logged.</p>
                 )}
               </div>
 
@@ -405,7 +408,7 @@ export default function CalendarPage() {
                 {notes.length > 0 ? (
                   <div className="space-y-3">
                     {notes.map(note => (
-                      <div key={note.id} className="relative p-4 rounded-xl text-[13px] text-gray-300 leading-relaxed italic border border-transparent hover:border-white/10 transition-colors group pr-16" style={{ background: 'var(--bg-raised)' }}>
+                      <div key={note.id} className="relative p-4 rounded-xl text-[13px] leading-relaxed italic border border-transparent hover:border-white/10 transition-colors group pr-16" style={{ background: 'var(--bg-raised)', color: 'var(--t-2)' }}>
                         "{note.content}"
                         <div className="absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                           <button onClick={() => { setEditEntryData(note); setShowAddModal(true); }} className="text-sky-300 p-1.5 bg-sky-500/10 hover:bg-sky-500/20 rounded-md">
@@ -419,7 +422,7 @@ export default function CalendarPage() {
                     ))}
                   </div>
                 ) : (
-                  <p className="text-[12px] text-gray-500 italic">No notes.</p>
+                  <p className="text-[12px] italic" style={{ color: 'var(--t-3)' }}>No notes.</p>
                 )}
               </div>
             </div>
