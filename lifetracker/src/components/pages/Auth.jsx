@@ -43,7 +43,7 @@ export default function AuthPage({ onLoginSuccess }) {
       {/* Ambient background mesh */}
       <div className="mesh-bg" aria-hidden="true" />
       
-      <div className="w-full max-w-md glass-card p-8 anim-up shadow-2xl relative z-10" style={{ background: 'rgba(20, 20, 30, 0.7)' }}>
+      <div className="w-full max-w-md glass-card p-8 anim-up shadow-2xl relative z-10">
         <div className="flex flex-col items-center mb-8">
           <div
             className="w-14 h-14 rounded-[18px] flex items-center justify-center mb-4"
