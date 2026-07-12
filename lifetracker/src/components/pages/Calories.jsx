@@ -196,7 +196,7 @@ export default function CaloriesPage() {
           <div className="p-5 border-b flex flex-col sm:flex-row sm:items-center justify-between gap-4" style={{ borderColor: 'var(--border)' }}>
             <h2 className="text-lg font-bold tracking-tight" style={{ color: 'var(--t-1)' }}>Food Log</h2>
             <div className="relative">
-              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--t-3)' }} />
               <input
                 id="food-search"
                 type="text"
