@@ -129,14 +129,11 @@ export default function Header({ onMenuOpen, onOpenModal }) {
     <header
       id="app-header"
       role="banner"
-      className="sticky top-0 z-20 flex items-center gap-3 px-4 sm:px-6 anim-down"
-      style={{
-        height: 'var(--header-h)',
-        background: 'rgba(14,14,26,0.82)',
-        backdropFilter: 'blur(24px) saturate(150%)',
-        WebkitBackdropFilter: 'blur(24px) saturate(150%)',
-        borderBottom: '1px solid var(--border)',
-      }}
+     className="glass sticky top-0 z-20 flex items-center gap-3 px-4 sm:px-6 anim-down"
+     style={{
+      height: 'var(--header-h)',
+      borderBottom: '1px solid var(--border)',
+     }}
     >
       {/* ── Left zone ── */}
       <div className="flex items-center gap-3 flex-shrink-0">
