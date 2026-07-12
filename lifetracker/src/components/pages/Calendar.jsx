@@ -236,7 +236,7 @@ export default function CalendarPage() {
       style={{ minHeight: 0 }}
     >
       <div
-        className="max-w-[1400px] mx-auto px-4 sm:px-6 py-8"
+       className="w-full px-6 lg:px-8 xl:px-10 2xl:px-12 py-8"
         style={{ paddingBottom: 'calc(6rem + 24px)' }}
       >
         <div className="flex flex-col lg:flex-row gap-6 items-start">
