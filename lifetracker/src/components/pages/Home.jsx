@@ -250,7 +250,7 @@ export default function Home() {
       style={{ minHeight: 0 }}
     >
       <div
-        className="max-w-[1600px] mx-auto px-4 sm:px-6 py-8 space-y-10"
+         className="w-full px-6 lg:px-8 xl:px-10 2xl:px-12 py-8 space-y-10"
         style={{ paddingBottom: 'calc(6rem + 24px)' }}
       >
         {/* Greeting */}
