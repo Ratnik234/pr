@@ -104,6 +104,11 @@ export default function ProfilePage() {
                                 <div className="absolute inset-0 flex items-center justify-center bg-black/40">
                                     <div className="w-5 h-5 rounded-full border-2 border-white/30 border-t-white animate-spin" />
                                 </div>
+                                <span
+                                    className="absolute bottom-1 right-1 w-4 h-4 rounded-full border-2"
+                                    style={{ background: 'var(--emerald)', borderColor: 'var(--bg-panel)' }}
+                                    aria-hidden="true"
+                               />
                             )}
                         </div>
                         <button
@@ -143,7 +148,7 @@ export default function ProfilePage() {
                 {/* Profile details */}
                 <section className="mb-8 anim-up">
                     <div className="flex items-center justify-between mb-3 px-1">
-                        <h2 className="text-[12px] font-bold uppercase tracking-widest text-gray-400">Дані профілю</h2>
+                        <h2 className="text-[12px] font-bold uppercase tracking-widest" style={{ color: 'var(--t-3)' }}>Дані профілю</h2>
                         <button
                             onClick={() => navigate('/settings')}
                             className="flex items-center gap-1.5 text-[12px] font-medium transition-colors hover:text-white"
