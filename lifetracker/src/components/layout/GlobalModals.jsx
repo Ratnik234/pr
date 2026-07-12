@@ -8,7 +8,7 @@ export default function GlobalModals({ activeModal, onClose }) {
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm anim-up">
       <div className="w-full max-w-sm p-6 rounded-[24px] shadow-2xl glass-card relative" style={{ background: 'var(--bg-panel)' }}>
-        <button onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors">
+        <button onClick={onClose} className="absolute top-4 right-4 transition-colors" style={{ color: 'var(--t-3)' }} onMouseEnter={e => e.currentTarget.style.color = 'var(--t-1)'} onMouseLeave={e => e.currentTarget.style.color = 'var(--t-3)'}>
           <X size={20} />
         </button>
         {activeModal === 'task' && <TaskForm onClose={onClose} />}
@@ -55,7 +55,7 @@ function TaskForm({ onClose }) {
         />
         <div className="flex gap-3">
           <div className="flex-1 relative">
-            <Clock size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <Clock size={16} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--t-3)' }} />
             <input 
               type="time" 
               value={startTime} 
@@ -65,7 +65,7 @@ function TaskForm({ onClose }) {
             />
           </div>
           <div className="flex-1 relative">
-            <Clock size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <Clock size={16} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--t-3)' }} />
             <input 
               type="time" 
               value={endTime} 
@@ -115,7 +115,7 @@ function MealForm({ onClose }) {
           className="w-full px-4 py-3 rounded-xl text-[15px] outline-none" 
           style={{ background: 'var(--bg-raised)', border: '1px solid var(--border)', color: 'var(--t-1)' }} 
         />
-        <button type="submit" className="btn-primary py-3 rounded-xl" style={{ background: 'var(--orange)', color: 'white' }}>Save</button>
+        <button type="submit" className="btn-primary py-3 rounded-xl" style={{ background: '#f97316', color: 'white' }}>Save</button>
       </form>
     </>
   )
