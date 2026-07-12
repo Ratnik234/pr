@@ -60,7 +60,7 @@ function AddFoodModal({ onClose, onAdd }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(6px)' }}>
       <div className="glass-card p-6 w-full max-w-md anim-up" style={{ border: '1px solid var(--border)' }}>
-        <h3 className="text-lg font-bold text-white mb-5">Add Food Entry</h3>
+        <h3 className="text-lg font-bold mb-5" style={{ color: 'var(--t-1)' }}>Add Food Entry</h3>
 
         <div className="space-y-3">
           {[
@@ -81,10 +81,11 @@ function AddFoodModal({ onClose, onAdd }) {
                 value={form[id]}
                 onChange={e => handle(id, e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && submit()}
-                className="w-full rounded-xl px-3 py-2.5 text-[14px] text-white outline-none transition-colors focus:ring-1"
+                className="w-full rounded-xl px-3 py-2.5 text-[14px] outline-none transition-colors focus:ring-1"
                 style={{
                   background: 'var(--bg-raised)',
                   border: '1px solid var(--border)',
+                  color: 'var(--t-1)',
                   '--tw-ring-color': 'rgba(124,58,237,0.45)',
                 }}
               />
@@ -168,7 +169,7 @@ export default function CaloriesPage() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 anim-down">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-white mb-1">Today's Calories</h1>
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight mb-1" style={{ color: 'var(--t-1)' }}>Today's Calories</h1>
             <p className="text-[14px]" style={{ color: 'var(--t-3)' }}>Track your nutrition and macro goals.</p>
           </div>
           <button
@@ -193,7 +194,7 @@ export default function CaloriesPage() {
         <div className="glass-card overflow-hidden anim-up anim-delay-5" style={{ padding: 0 }}>
 
           <div className="p-5 border-b flex flex-col sm:flex-row sm:items-center justify-between gap-4" style={{ borderColor: 'var(--border)' }}>
-            <h2 className="text-lg font-bold text-white tracking-tight">Food Log</h2>
+            <h2 className="text-lg font-bold tracking-tight" style={{ color: 'var(--t-1)' }}>Food Log</h2>
             <div className="relative">
               <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
               <input
@@ -202,8 +203,8 @@ export default function CaloriesPage() {
                 placeholder="Search food..."
                 value={search}
                 onChange={e => setSearch(e.target.value)}
-                className="w-full sm:w-64 border rounded-xl py-2 pl-9 pr-3 text-[13px] text-white transition-colors"
-                style={{ background: 'var(--bg-raised)', borderColor: 'var(--border)' }}
+                className="w-full sm:w-64 border rounded-xl py-2 pl-9 pr-3 text-[13px] transition-colors"
+                style={{ background: 'var(--bg-raised)', borderColor: 'var(--border)', color: 'var(--t-1)' }}
               />
             </div>
           </div>
@@ -230,7 +231,7 @@ export default function CaloriesPage() {
                   {filtered.map(food => (
                     <tr key={food.id} className="transition-colors hover:bg-white/[0.03] group cursor-default">
                       <td className="px-5 py-4">
-                        <p className="text-[14px] font-semibold text-gray-200 group-hover:text-white transition-colors">{food.name}</p>
+                        <p className="text-[14px] font-semibold transition-colors" style={{ color: 'var(--t-1)' }}>{food.name}</p>
                         <p className="text-[11px] mt-0.5 font-mono" style={{ color: 'var(--t-3)' }}>{food.date}</p>
                       </td>
                       <td className="px-5 py-4">
@@ -238,9 +239,9 @@ export default function CaloriesPage() {
                           {food.calories} kcal
                         </span>
                       </td>
-                      <td className="px-5 py-4 text-[13px] font-semibold text-gray-300">{food.protein}g</td>
-                      <td className="px-5 py-4 text-[13px] font-semibold text-gray-300">{food.fat}g</td>
-                      <td className="px-5 py-4 text-[13px] font-semibold text-gray-300">{food.carbs}g</td>
+                      <td className="px-5 py-4 text-[13px] font-semibold" style={{ color: 'var(--t-2)' }}>{food.protein}g</td>
+                      <td className="px-5 py-4 text-[13px] font-semibold" style={{ color: 'var(--t-2)' }}>{food.fat}g</td>
+                      <td className="px-5 py-4 text-[13px] font-semibold" style={{ color: 'var(--t-2)' }}>{food.carbs}g</td>
                       <td className="px-5 py-4">
                         <button
                           id={`delete-food-${food.id}`}
