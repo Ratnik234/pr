@@ -440,7 +440,7 @@ export default function MainContent({ activeNav }) {
       style={{ minHeight: 0 }}
     >
       <div
-        className="max-w-[1200px] mx-auto px-4 sm:px-6 py-7 space-y-5"
+        className="w-full max-w-[1600px] mx-auto px-6 lg:px-8 xl:px-10 py-7 space-y-5"
         style={{ paddingBottom: 'calc(5rem + 24px)' }}  /* room for mobile bottom nav */
       >
         <PageHeading title={page.title} subtitle={page.subtitle} />
