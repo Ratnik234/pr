@@ -46,13 +46,13 @@ function AddFoodModal({ onClose, onAdd }) {
   }
 
   function submit() {
-    if (!form.name.trim()) { setError('Вкажіть назву страви'); return }
+    if (!form.name.trim()) { setError(t('calories.enterMealName')) }
     onAdd({
-      name:     form.name.trim(),
+      name: form.name.trim(),
       calories: Number(form.calories) || 0,
-      protein:  Number(form.protein)  || 0,
-      fat:      Number(form.fat)      || 0,
-      carbs:    Number(form.carbs)    || 0,
+      protein: Number(form.protein) || 0,
+      fat: Number(form.fat) || 0,
+      carbs: Number(form.carbs) || 0,
     })
     onClose()
   }
@@ -64,11 +64,11 @@ function AddFoodModal({ onClose, onAdd }) {
 
         <div className="space-y-3">
           {[
-            { id: 'name',     label: 'Food Name',   type: 'text',   placeholder: 'e.g. Grilled Chicken' },
-            { id: 'calories', label: 'Calories',    type: 'number', placeholder: 'kcal' },
-            { id: 'protein',  label: 'Protein (g)', type: 'number', placeholder: 'g' },
-            { id: 'fat',      label: 'Fat (g)',      type: 'number', placeholder: 'g' },
-            { id: 'carbs',    label: 'Carbs (g)',    type: 'number', placeholder: 'g' },
+            { id: 'name', label: 'Food Name', type: 'text', placeholder: 'e.g. Grilled Chicken' },
+            { id: 'calories', label: 'Calories', type: 'number', placeholder: 'kcal' },
+            { id: 'protein', label: 'Protein (g)', type: 'number', placeholder: 'g' },
+            { id: 'fat', label: 'Fat (g)', type: 'number', placeholder: 'g' },
+            { id: 'carbs', label: 'Carbs (g)', type: 'number', placeholder: 'g' },
           ].map(({ id, label, type, placeholder }) => (
             <div key={id}>
               <label className="block text-[11px] font-semibold uppercase tracking-wider mb-1" style={{ color: 'var(--t-3)' }}>
@@ -120,10 +120,10 @@ function AddFoodModal({ onClose, onAdd }) {
 // ─── CaloriesPage ─────────────────────────────────────────────────────────────
 export default function CaloriesPage() {
   const today = todayStr()
-  const [foods, setFoods]         = useState([])
-  const [totals, setTotals]       = useState({ calories: 0, protein: 0, fat: 0, carbs: 0 })
-  const [goals, setGoals]         = useState({ calories: 2200, protein: 140, fat: 65, carbs: 250 })
-  const [search, setSearch]       = useState('')
+  const [foods, setFoods] = useState([])
+  const [totals, setTotals] = useState({ calories: 0, protein: 0, fat: 0, carbs: 0 })
+  const [goals, setGoals] = useState({ calories: 2200, protein: 140, fat: 65, carbs: 250 })
+  const [search, setSearch] = useState('')
   const [showModal, setShowModal] = useState(false)
 
   // ─── Load from SQLite ───────────────────────────────────────────────────────
@@ -184,10 +184,10 @@ export default function CaloriesPage() {
 
         {/* 4 Macro Cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <MacroCard label="Calories" value={totals.calories} target={goals.calories} unit="kcal" Icon={Flame}  colorClass="#f97316" gradientClass="bg-gradient-to-br from-orange-400 to-pink-500"    delay="anim-delay-1" />
-          <MacroCard label="Protein"  value={totals.protein}  target={goals.protein}  unit="g"    Icon={Beef}   colorClass="#a78bfa" gradientClass="bg-gradient-to-br from-violet-500 to-indigo-600" delay="anim-delay-2" />
-          <MacroCard label="Fat"      value={totals.fat}      target={goals.fat}      unit="g"    Icon={Droplet} colorClass="#38bdf8" gradientClass="bg-gradient-to-br from-sky-400 to-blue-600"     delay="anim-delay-3" />
-          <MacroCard label="Carbs"    value={totals.carbs}    target={goals.carbs}    unit="g"    Icon={Wheat}  colorClass="#34d399" gradientClass="bg-gradient-to-br from-emerald-400 to-teal-500" delay="anim-delay-4" />
+          <MacroCard label="Calories" value={totals.calories} target={goals.calories} unit="kcal" Icon={Flame} colorClass="#f97316" gradientClass="bg-gradient-to-br from-orange-400 to-pink-500" delay="anim-delay-1" />
+          <MacroCard label="Protein" value={totals.protein} target={goals.protein} unit="g" Icon={Beef} colorClass="#a78bfa" gradientClass="bg-gradient-to-br from-violet-500 to-indigo-600" delay="anim-delay-2" />
+          <MacroCard label="Fat" value={totals.fat} target={goals.fat} unit="g" Icon={Droplet} colorClass="#38bdf8" gradientClass="bg-gradient-to-br from-sky-400 to-blue-600" delay="anim-delay-3" />
+          <MacroCard label="Carbs" value={totals.carbs} target={goals.carbs} unit="g" Icon={Wheat} colorClass="#34d399" gradientClass="bg-gradient-to-br from-emerald-400 to-teal-500" delay="anim-delay-4" />
         </div>
 
         {/* Food Log Table */}

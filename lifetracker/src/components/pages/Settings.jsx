@@ -42,7 +42,7 @@ function SettingsItem({ icon: Icon, title, description, rightElement, onClick, i
         <div>
           <p className="text-[15px] font-semibold" style={{ color: isDestructive ? '#f87171' : 'var(--t-1)' }}>{title}</p>
           {description && (
-             <p className="text-[12px] mt-0.5" style={{ color: 'var(--t-3)' }}>{description}</p>
+            <p className="text-[12px] mt-0.5" style={{ color: 'var(--t-3)' }}>{description}</p>
           )}
         </div>
       </div>
@@ -62,8 +62,8 @@ function SettingsItem({ icon: Icon, title, description, rightElement, onClick, i
 function StatusToast({ message, type }) {
   if (!message) return null
   const colors = {
-    ok:  { bg: 'rgba(16,185,129,0.12)',  text: '#34d399', border: 'rgba(16,185,129,0.2)'  },
-    err: { bg: 'rgba(239,68,68,0.12)',   text: '#f87171', border: 'rgba(239,68,68,0.2)'   },
+    ok: { bg: 'rgba(16,185,129,0.12)', text: '#34d399', border: 'rgba(16,185,129,0.2)' },
+    err: { bg: 'rgba(239,68,68,0.12)', text: '#f87171', border: 'rgba(239,68,68,0.2)' },
   }
   const c = colors[type] || colors.ok
   return (
@@ -139,7 +139,7 @@ export default function SettingsPage() {
   async function handleExport() {
     const ok = await exportData()
     showStatus(
-      ok ? 'Файл lifetracker-backup.json завантажено!' : 'Помилка при експорті.',
+      ok ? t('settings.backupImported') : t('settings.exportError'),
       ok ? 'ok' : 'err'
     )
   }
@@ -163,12 +163,12 @@ export default function SettingsPage() {
   }
 
   async function handleReset() {
-    if (!confirm('Видалити ВСІ дані LifeTracker? Цю дію неможливо скасувати.')) return
+    if (!confirm(t('settings.confirmReset'))) return
     await resetData()
     const s = await getSettings()
     if (s.theme) handleThemeChange(s.theme)
     if (s.goals) setGoals(s.goals)
-    showStatus('Дані повністю очищено.', 'ok')
+    showStatus(t('settings.dataCleared'), 'ok')
   }
 
   return (
@@ -249,7 +249,7 @@ export default function SettingsPage() {
                   )}
                   style={language === 'ua' ? { color: 'var(--t-1)' } : {}}
                 >
-                  Українська
+                  t('language.ukrainian')
                 </button>
               </div>
             }
@@ -262,9 +262,9 @@ export default function SettingsPage() {
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
               {[
                 { field: 'calories', label: 'Calories (kcal)' },
-                { field: 'protein',  label: 'Protein (g)' },
-                { field: 'fat',      label: 'Fat (g)' },
-                { field: 'carbs',    label: 'Carbs (g)' },
+                { field: 'protein', label: 'Protein (g)' },
+                { field: 'fat', label: 'Fat (g)' },
+                { field: 'carbs', label: 'Carbs (g)' },
               ].map(({ field, label }) => (
                 <div key={field}>
                   <label className="block text-[12px] font-medium mb-1.5" style={{ color: 'var(--t-2)' }}>{label}</label>

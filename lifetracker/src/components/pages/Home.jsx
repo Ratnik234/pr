@@ -250,7 +250,7 @@ export default function Home() {
       style={{ minHeight: 0 }}
     >
       <div
-         className="w-full px-6 lg:px-8 xl:px-10 2xl:px-12 py-8 space-y-10"
+        className="w-full px-6 lg:px-8 xl:px-10 2xl:px-12 py-8 space-y-10"
         style={{ paddingBottom: 'calc(6rem + 24px)' }}
       >
         {/* Greeting */}
@@ -298,7 +298,7 @@ export default function Home() {
           <div className="glass-card p-4 anim-up anim-delay-5">
             {!motionSupported && (
               <div className="mb-4 p-3 rounded-xl text-[13px] border border-amber-500/20 bg-amber-500/10 text-amber-400">
-                Автоматическое получение данных недоступно
+                t('home.autoDataUnavailable')
               </div>
             )}
             <div className="grid grid-cols-3 gap-4 text-center">

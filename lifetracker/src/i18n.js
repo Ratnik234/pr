@@ -5,6 +5,32 @@ import { initReactI18next } from 'react-i18next';
 const resources = {
   en: {
     translation: {
+      settings: {
+        backupImported: "lifetracker-backup.json imported successfully!",
+        exportError: "Export failed.",
+        confirmReset: "Delete ALL LifeTracker data? This action cannot be undone.",
+        dataCleared: "All data has been deleted."
+      },
+      language: {
+        ukrainian: "Ukrainian"
+      },
+      calories: {
+        enterMealName: "Enter meal name",
+        addFood: "Add Food",
+        cancel: "Cancel",
+        noFoods: "No foods logged yet",
+        total: "Total",
+        remaining: "Remaining",
+        protein: "Protein",
+        fat: "Fat",
+        carbs: "Carbs",
+        calories: "Calories",
+        kcal: "kcal",
+        grams: "grams"
+      },
+      home: {
+        autoDataUnavailable: "Auto-retrieval of data is unavailable"
+      },
       profile: {
         title: "Profile",
         description: "Your personal information and account details.",
@@ -90,6 +116,32 @@ const resources = {
 
   ua: {
     translation: {
+      settings: {
+        backupImported: "Файл lifetracker-backup.json завантажено!",
+        exportError: "Помилка при експорті.",
+        confirmReset: "Видалити ВСІ дані LifeTracker? Цю дію неможливо скасувати.",
+        dataCleared: "Дані повністю очищено."
+      },
+      language: {
+        ukrainian: "Українська"
+      },
+      calories: {
+        enterMealName: "Вкажіть назву страви",
+        addFood: "Додати їжу",
+        cancel: "Скасувати",
+        noFoods: "Їжа ще не додана",
+        total: "Всього",
+        remaining: "Залишилось",
+        protein: "Білки",
+        fat: "Жири",
+        carbs: "Вуглеводи",
+        calories: "Калорії",
+        kcal: "ккал",
+        grams: "грам"
+      },
+      home: {
+        autoDataUnavailable: "Автоматичне отримання даних недоступне"
+      },
       profile: {
         title: "Профіль",
         description: "Твоя особиста інформація та дані акаунта.",
