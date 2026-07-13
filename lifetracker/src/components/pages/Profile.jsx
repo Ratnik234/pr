@@ -2,6 +2,7 @@ import { useRef, useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Camera, Ruler, Weight, Cake, Users, Zap, Pencil, Crown } from 'lucide-react'
 import { getCurrentUserInfo, getSettings, updateSettings } from '../../utils/storage'
+import { useTranslation } from 'react-i18next';
 
 function clsx(...args) { return args.filter(Boolean).join(' ') }
 
@@ -31,6 +32,7 @@ const ACTIVITY_LABELS = { low: 'Низька', medium: 'Середня', high: '
 
 export default function ProfilePage() {
     const navigate = useNavigate()
+    const { t } = useTranslation();
     const fileInputRef = useRef(null)
     const [username, setUsername] = useState('')
     const [avatarUrl, setAvatarUrl] = useState(null)
@@ -84,7 +86,7 @@ export default function ProfilePage() {
 
                 {/* Header */}
                 <div className="mb-8 anim-down">
-                    <h1 className="text-2xl sm:text-3xl font-bold tracking-tight mb-1" style={{ color: 'var(--t-1)' }}>Профіль</h1>
+                    <h1 className="text-2xl sm:text-3xl font-bold tracking-tight mb-1" style={{ color: 'var(--t-1)' }}>{t('profile.title')}</h1>
                     <p className="text-[14px]" style={{ color: 'var(--t-3)' }}>Твоя особиста інформація та дані акаунта.</p>
                 </div>
 
@@ -149,14 +151,14 @@ export default function ProfilePage() {
                 {/* Profile details */}
                 <section className="mb-8 anim-up">
                     <div className="flex items-center justify-between mb-3 px-1">
-                        <h2 className="text-[12px] font-bold uppercase tracking-widest" style={{ color: 'var(--t-3)' }}>Дані профілю</h2>
+                        <h2 className="text-[12px] font-bold uppercase tracking-widest" style={{ color: 'var(--t-3)' }}>{t('profile.profileData')}</h2>
                         <button
                             onClick={() => navigate('/settings')}
                             className="flex items-center gap-1.5 text-[12px] font-medium transition-colors hover:text-white"
                             style={{ color: 'var(--t-3)' }}
                         >
                             <Pencil size={12} />
-                            Редагувати
+                            {t('profile.edit')}
                         </button>
                     </div>
                     <div className="glass-card overflow-hidden" style={{ padding: 0 }}>

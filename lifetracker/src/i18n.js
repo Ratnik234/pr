@@ -5,6 +5,12 @@ import { initReactI18next } from 'react-i18next';
 const resources = {
   en: {
     translation: {
+      profile: {
+        title: "Profile",
+        description: "Your personal information and account details.",
+        profileData: "Profile Information",
+        edit: "Edit"
+      },
       menu: {
         home: 'Home',
         calendar: 'Calendar',
@@ -84,6 +90,12 @@ const resources = {
 
   ua: {
     translation: {
+      profile: {
+        title: "Профіль",
+        description: "Твоя особиста інформація та дані акаунта.",
+        profileData: "Дані профілю",
+        edit: "Редагувати"
+      },
       menu: {
         home: 'Головна',
         calendar: 'Календар',
