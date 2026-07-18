@@ -1,0 +1,115 @@
+{
+  "settings": {
+    "backupImported": "Файл lifetracker-backup.json завантажено!",
+    "exportError": "Помилка при експорті.",
+    "confirmReset": "Видалити ВСІ дані LifeTracker? Цю дію неможливо скасувати.",
+    "dataCleared": "Дані повністю очищено.",
+    "title": "Налаштування",
+    "language": "Мова",
+    "save": "Зберегти зміни",
+    "profile": "Профіль",
+    "height": "Зріст (см)",
+    "weight": "Вага (кг)",
+    "age": "Вік",
+    "gender": "Стать (необов'язково)",
+    "activityLevel": "Рівень активності",
+    "male": "Чоловіча",
+    "female": "Жіноча",
+    "low": "Низький",
+    "medium": "Середній",
+    "high": "Високий",
+    "goals": "Цілі",
+    "theme": "Тема"
+  },
+  "language": {
+    "ukrainian": "Українська"
+  },
+  "calories": {
+    "enterMealName": "Вкажіть назву страви",
+    "addFood": "Додати їжу",
+    "cancel": "Скасувати",
+    "noFoods": "Їжа ще не додана",
+    "total": "Всього",
+    "remaining": "Залишилось",
+    "protein": "Білки",
+    "fat": "Жири",
+    "carbs": "Вуглеводи",
+    "calories": "Калорії",
+    "kcal": "ккал",
+    "grams": "грам"
+  },
+  "home": {
+    "autoDataUnavailable": "Автоматичне отримання даних недоступне",
+    "goodMorning": "Доброго ранку",
+    "goodAfternoon": "Доброго дня",
+    "goodEvening": "Доброго вечора",
+    "todayOverview": "Огляд на сьогодні",
+    "quickActions": "Швидкі дії",
+    "logWorkout": "Додати тренування",
+    "addWater": "Додати воду",
+    "addNote": "Додати нотатку",
+    "addCalories": "Додати калорії",
+    "warnings": "Попередження",
+    "highLoadWarning": "Високе навантаження",
+    "highLoadDesc": "Подумайте про відпочинок завтра. Ваше навантаження сьогодні було надто високим з урахуванням профілю.",
+    "lowWaterWarning": "Потрібна гідратація",
+    "lowWaterDesc": "Ви випили недостатньо води на сьогодні.",
+    "overCaloriesWarning": "Багато калорій",
+    "overCaloriesDesc": "Ви значно перевищили свою денну норму калорій."
+  },
+  "profile": {
+    "title": "Профіль",
+    "description": "Твоя особиста інформація та дані акаунта.",
+    "profileData": "Дані профілю",
+    "edit": "Редагувати"
+  },
+  "menu": {
+    "home": "Головна",
+    "calendar": "Календар",
+    "calories": "Калорії",
+    "statistics": "Статистика",
+    "settings": "Налаштування",
+    "quickActions": "Швидкі дії",
+    "logMeal": "Додати їжу",
+    "startWorkout": "Почати тренування",
+    "addWater": "Додати воду",
+    "logout": "Вийти",
+    "healthScore": "Оцінка здоров'я",
+    "excellentDay": "Чудовий день!"
+  },
+  "nav": {
+    "home": "Головна",
+    "calendar": "Календар",
+    "calories": "Калорії",
+    "stats": "Статистика",
+    "settings": "Налаштування"
+  },
+  "auth": {
+    "login": "Увійти",
+    "register": "Зареєструватися",
+    "email": "Електронна пошта",
+    "password": "Пароль",
+    "noAccount": "Немає акаунта? Зареєструватися",
+    "hasAccount": "Вже є акаунт? Увійти"
+  },
+  "stats": {
+    "title": "Статистика",
+    "recommendations": "Рекомендації",
+    "increaseWeight": "Збільште вагу",
+    "increaseWeightDesc": "Ви піднімаєте {{weight}}кг вже деякий час. Спробуйте додати 2.5-5кг.",
+    "noProgress": "Застій у прогресі",
+    "noProgressDesc": "Ваша робоча вага не змінювалась вже місяць. Спробуйте змінити програму тренувань."
+  },
+  "sidebar": {
+    "wellnessDashboard": "Панель здоров'я",
+    "menu": "Меню",
+    "addTask": "Додати задачу",
+    "logMeal": "Додати їжу",
+    "addWater": "Додати воду",
+    "viewCalendar": "Переглянути календар",
+    "ptsFromYesterday": "+{{pts}} балів з учора",
+    "myAccount": "Мій акаунт",
+    "active": "Активний",
+    "logout": "Вийти"
+  }
+}

@@ -1,0 +1,104 @@
+{
+  "settings": {
+    "backupImported": "lifetracker-backup.json imported successfully!",
+    "exportError": "Export failed.",
+    "confirmReset": "Delete ALL LifeTracker data? This action cannot be undone.",
+    "dataCleared": "All data has been deleted.",
+    "profile": "Profile",
+    "height": "Height (cm)",
+    "weight": "Weight (kg)",
+    "age": "Age",
+    "gender": "Gender (optional)",
+    "activityLevel": "Activity Level (optional)",
+    "male": "Male",
+    "female": "Female",
+    "low": "Low",
+    "medium": "Medium",
+    "high": "High",
+    "goals": "Goals",
+    "theme": "Theme"
+  },
+  "language": {
+    "ukrainian": "Ukrainian"
+  },
+  "calories": {
+    "enterMealName": "Enter meal name",
+    "addFood": "Add Food",
+    "cancel": "Cancel",
+    "noFoods": "No foods logged yet",
+    "total": "Total",
+    "remaining": "Remaining",
+    "protein": "Protein",
+    "fat": "Fat",
+    "carbs": "Carbs",
+    "calories": "Calories",
+    "kcal": "kcal",
+    "grams": "grams"
+  },
+  "home": {
+    "autoDataUnavailable": "Auto-retrieval of data is unavailable",
+    "goodMorning": "Good Morning",
+    "goodAfternoon": "Good Afternoon",
+    "goodEvening": "Good Evening",
+    "todayOverview": "Today's Overview",
+    "quickActions": "Quick Actions",
+    "logWorkout": "Log Workout",
+    "addWater": "Add Water",
+    "addNote": "Add Note",
+    "addCalories": "Add Calories",
+    "warnings": "Warnings",
+    "highLoadWarning": "High Workout Load",
+    "highLoadDesc": "Consider resting tomorrow. Your workout load was extremely high today based on your profile.",
+    "lowWaterWarning": "Hydration Needed",
+    "lowWaterDesc": "You haven't logged enough water for today.",
+    "overCaloriesWarning": "High Calories",
+    "overCaloriesDesc": "You exceeded your daily calorie goal significantly."
+  },
+  "profile": {
+    "title": "Profile",
+    "description": "Your personal information and account details.",
+    "profileData": "Profile Information",
+    "edit": "Edit"
+  },
+  "menu": {
+    "home": "Home",
+    "calendar": "Calendar",
+    "calories": "Calories",
+    "statistics": "Statistics",
+    "settings": "Settings",
+    "quickActions": "Quick Actions",
+    "logMeal": "Log Meal",
+    "startWorkout": "Start Workout",
+    "addWater": "Add Water",
+    "logout": "Log Out",
+    "healthScore": "Health Score",
+    "excellentDay": "Excellent day!"
+  },
+  "nav": {
+    "home": "Home",
+    "calendar": "Calendar",
+    "calories": "Calories",
+    "stats": "Statistics",
+    "settings": "Settings"
+  },
+  "stats": {
+    "title": "Statistics",
+    "recommendations": "Recommendations",
+    "increaseWeight": "Increase Weight",
+    "increaseWeightDesc": "You have been lifting {{weight}}kg for a while. Consider increasing by 2.5-5kg.",
+    "noProgress": "Plateau Detected",
+    "noProgressDesc": "Your lifting weight hasn't changed in a month. Consider a new training program."
+  },
+  "sidebar": {
+    "wellnessDashboard": "Wellness Dashboard",
+    "menu": "Menu",
+    "addTask": "Add Task",
+    "logMeal": "Log Meal",
+    "addWater": "Add Water",
+    "viewCalendar": "View Calendar",
+    "ptsFromYesterday": "+{{pts}} pts from yesterday",
+    "myAccount": "My Account",
+    "active": "Active",
+    "logout": "Logout"
+  }
+}
