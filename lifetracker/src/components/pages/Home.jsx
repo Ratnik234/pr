@@ -59,7 +59,7 @@ function ActivityCard({ title, time, description, Icon, colorClass, delay }) {
 }
 
 // ─── Simple Modals ────────────────────────────────────────────────────────────
-function AddTaskModal({ onClose, onAdd }) {
+function AddTaskModal({ onClose, onAdd, t }) {
   const [title, setTitle] = useState('')
   const handleSubmit = (e) => {
     e.preventDefault()
@@ -72,11 +72,11 @@ function AddTaskModal({ onClose, onAdd }) {
         <button onClick={onClose} className="absolute top-4 right-4 transition-colors" style={{ color: 'var(--t-3)' }} onMouseEnter={e => e.currentTarget.style.color = 'var(--t-1)'} onMouseLeave={e => e.currentTarget.style.color = 'var(--t-3)'}>
           <X size={20} />
         </button>
-        <h2 className="text-xl font-bold mb-6" style={{ color: 'var(--t-1)' }}>Add New Task</h2>
+        <h2 className="text-xl font-bold mb-6" style={{ color: 'var(--t-1)' }}>{t('home.addNewTask', 'Add New Task')}</h2>
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <input
             type="text"
-            placeholder="Task title"
+            placeholder={t('home.taskTitle', 'Task title')}
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             className="w-full px-4 py-3 rounded-xl text-[15px] transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
@@ -84,7 +84,7 @@ function AddTaskModal({ onClose, onAdd }) {
             autoFocus
           />
           <button type="submit" className="btn-primary w-full py-3 rounded-xl mt-2 text-[15px]">
-            Add Task
+            {t('home.addTask', 'Add Task')}
           </button>
         </form>
       </div>
@@ -92,7 +92,7 @@ function AddTaskModal({ onClose, onAdd }) {
   )
 }
 
-function AddNoteModal({ onClose, onAdd }) {
+function AddNoteModal({ onClose, onAdd, t }) {
   const [content, setContent] = useState('')
   const handleSubmit = (e) => {
     e.preventDefault()
@@ -105,10 +105,10 @@ function AddNoteModal({ onClose, onAdd }) {
         <button onClick={onClose} className="absolute top-4 right-4 transition-colors" style={{ color: 'var(--t-3)' }} onMouseEnter={e => e.currentTarget.style.color = 'var(--t-1)'} onMouseLeave={e => e.currentTarget.style.color = 'var(--t-3)'}>
           <X size={20} />
         </button>
-        <h2 className="text-xl font-bold mb-6" style={{ color: 'var(--t-1)' }}>Add New Note</h2>
+        <h2 className="text-xl font-bold mb-6" style={{ color: 'var(--t-1)' }}>{t('home.addNewNote', 'Add New Note')}</h2>
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <textarea
-            placeholder="Write your note here..."
+            placeholder={t('home.notePlaceholder', 'Write your note here...')}
             value={content}
             onChange={(e) => setContent(e.target.value)}
             rows={4}
@@ -117,7 +117,7 @@ function AddNoteModal({ onClose, onAdd }) {
             autoFocus
           />
           <button type="submit" className="btn-primary w-full py-3 rounded-xl mt-2 text-[15px]" style={{ background: 'linear-gradient(135deg, var(--sky), #38bdf8)' }}>
-            Save Note
+            {t('home.saveNote', 'Save Note')}
           </button>
         </form>
       </div>
@@ -245,7 +245,7 @@ export default function Home() {
   return (
     <main
       id="main-content"
-      aria-label="Home page content"
+      aria-label={t('nav.home', 'Home')}
       className="flex-1 overflow-y-auto"
       style={{ minHeight: 0 }}
     >
@@ -259,7 +259,7 @@ export default function Home() {
             {t('home.goodMorning', 'Good morning')}, {username} 👋
           </h1>
           <p className="text-[15px]" style={{ color: 'var(--t-2)' }}>
-            {t('home.todayOverview', "Let's make today a great day. Here is your overview.")}
+            {t('home.todayOverview', "Today's Overview")}
           </p>
         </header>
 
@@ -271,10 +271,10 @@ export default function Home() {
             {t('home.todayOverview', "Today's Overview")}
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-            <OverviewCard title="Completed Tasks" value={`${completedTasks} / ${totalTasks}`} subtext={`${totalTasks - completedTasks} tasks remaining`} Icon={CheckCircle2} gradientClass="bg-gradient-to-br from-violet-500 to-indigo-600" delay="anim-delay-1" />
-            <OverviewCard title="Calories" value={totals.calories.toLocaleString()} subtext={`${remainingCalories.toLocaleString()} kcal remaining`} Icon={Flame} gradientClass="bg-gradient-to-br from-orange-400 to-pink-500" delay="anim-delay-2" />
-            <OverviewCard title="Water" value="1.5 L" subtext="Goal: 2.5 L" Icon={Droplet} gradientClass="bg-gradient-to-br from-sky-400 to-blue-600" delay="anim-delay-3" />
-            <OverviewCard title="Mood" value="Great" subtext="Feeling energized" Icon={Smile} gradientClass="bg-gradient-to-br from-emerald-400 to-teal-500" delay="anim-delay-4" />
+            <OverviewCard title={t('home.completedTasks', 'Completed Tasks')} value={`${completedTasks} / ${totalTasks}`} subtext={t('home.tasksRemaining', '{{count}} tasks remaining', { count: totalTasks - completedTasks })} Icon={CheckCircle2} gradientClass="bg-gradient-to-br from-violet-500 to-indigo-600" delay="anim-delay-1" />
+            <OverviewCard title={t('calories.calories', 'Calories')} value={totals.calories.toLocaleString()} subtext={t('home.kcalRemaining', '{{count}} kcal remaining', { count: remainingCalories.toLocaleString() })} Icon={Flame} gradientClass="bg-gradient-to-br from-orange-400 to-pink-500" delay="anim-delay-2" />
+            <OverviewCard title={t('home.water', 'Water')} value="1.5 L" subtext={t('home.waterGoal', 'Goal: {{goal}} L', { goal: '2.5' })} Icon={Droplet} gradientClass="bg-gradient-to-br from-sky-400 to-blue-600" delay="anim-delay-3" />
+            <OverviewCard title={t('home.mood', 'Mood')} value={t('home.great', 'Great')} subtext={t('home.feelingEnergized', 'Feeling energized')} Icon={Smile} gradientClass="bg-gradient-to-br from-emerald-400 to-teal-500" delay="anim-delay-4" />
           </div>
         </section>
 
@@ -284,8 +284,8 @@ export default function Home() {
             {t('home.quickActions', 'Quick Actions')}
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <QuickActionButton label={t('home.logWorkout', 'Add Task')} Icon={Plus} colorClass="text-violet-400" delay="anim-delay-2" onClick={() => setShowTaskModal(true)} />
-            <QuickActionButton label={t('home.addCalories', 'Add Meal')} Icon={Utensils} colorClass="text-orange-400" delay="anim-delay-3" onClick={() => navigate('/calories')} />
+            <QuickActionButton label={t('home.addTask', 'Add Task')} Icon={Plus} colorClass="text-violet-400" delay="anim-delay-2" onClick={() => setShowTaskModal(true)} />
+            <QuickActionButton label={t('home.addCalories', 'Add Calories')} Icon={Utensils} colorClass="text-orange-400" delay="anim-delay-3" onClick={() => navigate('/calories')} />
             <QuickActionButton label={t('home.addNote', 'Add Note')} Icon={FileText} colorClass="text-sky-400" delay="anim-delay-4" onClick={() => setShowNoteModal(true)} />
           </div>
         </section>
@@ -293,26 +293,26 @@ export default function Home() {
         {/* Habit Tracker */}
         <section aria-labelledby="habits-heading">
           <h2 id="habits-heading" className="text-[14px] font-bold uppercase tracking-[0.12em] mb-4" style={{ color: 'var(--t-3)' }}>
-            Habits Tracker
+            {t('home.habitsTracker', 'Habits Tracker')}
           </h2>
           <div className="glass-card p-4 anim-up anim-delay-5">
             {!motionSupported && (
               <div className="mb-4 p-3 rounded-xl text-[13px] border border-amber-500/20 bg-amber-500/10 text-amber-400">
-                t('home.autoDataUnavailable')
+                {t('home.autoDataUnavailable', 'Auto-retrieval of data is unavailable')}
               </div>
             )}
             <div className="grid grid-cols-3 gap-4 text-center">
               <div>
                 <p className="text-[20px] font-bold" style={{ color: 'var(--t-1)' }}>{activity.steps.toLocaleString()}</p>
-                <p className="text-[11px] font-bold uppercase tracking-wider" style={{ color: 'var(--t-3)' }}>Steps</p>
+                <p className="text-[11px] font-bold uppercase tracking-wider" style={{ color: 'var(--t-3)' }}>{t('home.steps', 'Steps')}</p>
               </div>
               <div>
                 <p className="text-[20px] font-bold" style={{ color: 'var(--t-1)' }}>{activity.distance} km</p>
-                <p className="text-[11px] font-bold uppercase tracking-wider" style={{ color: 'var(--t-3)' }}>Distance</p>
+                <p className="text-[11px] font-bold uppercase tracking-wider" style={{ color: 'var(--t-3)' }}>{t('home.distance', 'Distance')}</p>
               </div>
               <div>
                 <p className="text-[20px] font-bold" style={{ color: 'var(--orange)' }}>{activity.caloriesBurned}</p>
-                <p className="text-[11px] font-bold uppercase tracking-wider" style={{ color: 'var(--t-3)' }}>Kcal Burned</p>
+                <p className="text-[11px] font-bold uppercase tracking-wider" style={{ color: 'var(--t-3)' }}>{t('home.kcalBurned', 'Kcal Burned')}</p>
               </div>
             </div>
           </div>
@@ -321,7 +321,7 @@ export default function Home() {
         {/* Recent Activities */}
         <section aria-labelledby="activity-heading">
           <h2 id="activity-heading" className="text-[14px] font-bold uppercase tracking-[0.12em] mb-4" style={{ color: 'var(--t-3)' }}>
-            Recent Activities
+            {t('home.recentActivities', 'Recent Activities')}
           </h2>
           <div className="space-y-3">
             <ActivityCard title="Morning Run" description="5.2 km · 342 kcal burned" time="09:14 AM" Icon={Activity} colorClass="text-violet-400" delay="anim-delay-3" />
@@ -334,6 +334,7 @@ export default function Home() {
 
       {showTaskModal && (
         <AddTaskModal
+          t={t}
           onClose={() => setShowTaskModal(false)}
           onAdd={async (title) => {
             await addEntry('tasks', { title, completed: false })
@@ -345,6 +346,7 @@ export default function Home() {
 
       {showNoteModal && (
         <AddNoteModal
+          t={t}
           onClose={() => setShowNoteModal(false)}
           onAdd={async (content) => {
             await addEntry('notes', { content })

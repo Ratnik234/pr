@@ -171,10 +171,17 @@ export default function SettingsPage() {
     showStatus(t('settings.dataCleared'), 'ok')
   }
 
+  const goalFields = [
+    { field: 'calories', labelKey: 'settings.caloriesKcal' },
+    { field: 'protein', labelKey: 'settings.proteinG' },
+    { field: 'fat', labelKey: 'settings.fatG' },
+    { field: 'carbs', labelKey: 'settings.carbsG' },
+  ]
+
   return (
     <main
       id="main-content"
-      aria-label="Settings page"
+      aria-label={t('settings.title', 'Settings')}
       className="flex-1 overflow-y-auto"
       style={{ minHeight: 0 }}
     >
@@ -183,15 +190,15 @@ export default function SettingsPage() {
         {/* Header */}
         <div className="mb-8 anim-down">
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight mb-1" style={{ color: 'var(--t-1)' }}>{t('settings.title', 'Settings')}</h1>
-          <p className="text-[14px]" style={{ color: 'var(--t-3)' }}>Manage your preferences and app data.</p>
+          <p className="text-[14px]" style={{ color: 'var(--t-3)' }}>{t('settings.subtitle', 'Manage your preferences and app data.')}</p>
         </div>
 
         {/* Appearance */}
-        <SettingsSection title="Appearance" icon={Palette} colorClass="text-violet-400">
+        <SettingsSection title={t('settings.appearance', 'Appearance')} icon={Palette} colorClass="text-violet-400">
           <SettingsItem
             icon={Monitor}
-            title="Theme"
-            description="Select your preferred color theme."
+            title={t('settings.themeTitle', 'Theme')}
+            description={t('settings.themeDescription', 'Select your preferred color theme.')}
             rightElement={
               <div className="flex items-center rounded-lg p-1 border border-white/10" style={{ background: 'var(--bg-raised)' }}>
                 <button
@@ -204,7 +211,7 @@ export default function SettingsPage() {
                   )}
                   style={theme === 'dark' ? { color: 'var(--t-1)' } : {}}
                 >
-                  <Moon size={14} /> Dark
+                  <Moon size={14} /> {t('settings.dark', 'Dark')}
                 </button>
                 <button
                   onClick={() => handleThemeChange('light')}
@@ -216,7 +223,7 @@ export default function SettingsPage() {
                   )}
                   style={theme === 'light' ? { color: 'var(--t-1)' } : {}}
                 >
-                  <Sun size={14} /> Light
+                  <Sun size={14} /> {t('settings.light', 'Light')}
                 </button>
               </div>
             }
@@ -224,7 +231,7 @@ export default function SettingsPage() {
           <SettingsItem
             icon={Globe}
             title={t('settings.language', 'Language')}
-            description="Select your preferred language."
+            description={t('settings.languageDescription', 'Select your preferred language.')}
             rightElement={
               <div className="flex items-center rounded-lg p-1 border border-white/10" style={{ background: 'var(--bg-raised)' }}>
                 <button
@@ -237,7 +244,7 @@ export default function SettingsPage() {
                   )}
                   style={language === 'en' ? { color: 'var(--t-1)' } : {}}
                 >
-                  English
+                  {t('language.english', 'English')}
                 </button>
                 <button
                   onClick={() => handleLanguageChange('ua')}
@@ -249,7 +256,7 @@ export default function SettingsPage() {
                   )}
                   style={language === 'ua' ? { color: 'var(--t-1)' } : {}}
                 >
-                  t('language.ukrainian')
+                  {t('language.ukrainian', 'Українська')}
                 </button>
               </div>
             }
@@ -257,17 +264,12 @@ export default function SettingsPage() {
         </SettingsSection>
 
         {/* Nutrition Goals */}
-        <SettingsSection title="Nutrition Goals" icon={Activity} colorClass="text-amber-400">
+        <SettingsSection title={t('settings.nutritionGoals', 'Nutrition Goals')} icon={Activity} colorClass="text-amber-400">
           <div className="p-4 sm:px-5">
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-              {[
-                { field: 'calories', label: 'Calories (kcal)' },
-                { field: 'protein', label: 'Protein (g)' },
-                { field: 'fat', label: 'Fat (g)' },
-                { field: 'carbs', label: 'Carbs (g)' },
-              ].map(({ field, label }) => (
+              {goalFields.map(({ field, labelKey }) => (
                 <div key={field}>
-                  <label className="block text-[12px] font-medium mb-1.5" style={{ color: 'var(--t-2)' }}>{label}</label>
+                  <label className="block text-[12px] font-medium mb-1.5" style={{ color: 'var(--t-2)' }}>{t(labelKey)}</label>
                   <input
                     type="number"
                     value={goals[field]}
@@ -345,17 +347,17 @@ export default function SettingsPage() {
         </SettingsSection>
 
         {/* Data Management */}
-        <SettingsSection title="Data Management" icon={Database} colorClass="text-sky-400">
+        <SettingsSection title={t('settings.dataManagement', 'Data Management')} icon={Database} colorClass="text-sky-400">
           <SettingsItem
             icon={Download}
-            title="Export Data"
-            description="Download all your health and habit data as JSON."
+            title={t('settings.exportData', 'Export Data')}
+            description={t('settings.exportDataDesc', 'Download all your health and habit data as JSON.')}
             onClick={handleExport}
           />
           <SettingsItem
             icon={Upload}
-            title="Import Data"
-            description="Restore your data from a previous backup file."
+            title={t('settings.importData', 'Import Data')}
+            description={t('settings.importDataDesc', 'Restore your data from a previous backup file.')}
             onClick={handleImportClick}
           />
           {/* Hidden file input for import */}
@@ -369,28 +371,28 @@ export default function SettingsPage() {
         </SettingsSection>
 
         {/* Danger Zone */}
-        <SettingsSection title="Danger Zone" icon={ShieldAlert} colorClass="text-red-400">
+        <SettingsSection title={t('settings.dangerZone', 'Danger Zone')} icon={ShieldAlert} colorClass="text-red-400">
           <SettingsItem
             icon={Trash2}
-            title="Reset All Data"
-            description="Permanently delete all your records and start fresh."
+            title={t('settings.resetAllData', 'Reset All Data')}
+            description={t('settings.resetAllDataDesc', 'Permanently delete all your records and start fresh.')}
             isDestructive={true}
             onClick={handleReset}
           />
         </SettingsSection>
 
         {/* About */}
-        <SettingsSection title="About" icon={Info} colorClass="text-emerald-400">
+        <SettingsSection title={t('settings.about', 'About')} icon={Info} colorClass="text-emerald-400">
           <div className="p-6 sm:p-8 flex flex-col items-center justify-center text-center gap-3">
             <div className="w-16 h-16 rounded-[18px] bg-gradient-to-br from-violet-600 to-indigo-600 flex items-center justify-center shadow-xl border border-white/10 mb-2">
               <Heart size={32} className="text-white" fill="white" />
             </div>
             <div>
               <p className="text-xl font-bold tracking-tight" style={{ color: 'var(--t-1)' }}>LifeTracker</p>
-              <p className="text-sm mt-1 font-medium" style={{ color: 'var(--t-3)' }}>Version 1.0.0 · SQLite</p>
+              <p className="text-sm mt-1 font-medium" style={{ color: 'var(--t-3)' }}>{t('settings.version', 'Version {{version}} · SQLite', { version: '1.0.0' })}</p>
             </div>
             <p className="text-[13px] max-w-sm mt-2 leading-relaxed" style={{ color: 'var(--t-2)' }}>
-              Designed with care to help you track your daily wellness, habits, and productivity. Your data stays entirely on your device via SQLite (WebAssembly).
+              {t('settings.aboutDescription', 'Designed with care to help you track your daily wellness, habits, and productivity. Your data stays entirely on your device via SQLite (WebAssembly).')}
             </p>
           </div>
         </SettingsSection>

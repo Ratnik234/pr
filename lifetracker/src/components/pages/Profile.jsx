@@ -27,9 +27,6 @@ function InfoRow({ icon: Icon, label, value, unit }) {
     )
 }
 
-const GENDER_LABELS = { male: 'Чоловіча', female: 'Жіноча' }
-const ACTIVITY_LABELS = { low: 'Низька', medium: 'Середня', high: 'Висока' }
-
 export default function ProfilePage() {
     const navigate = useNavigate()
     const { t } = useTranslation();
@@ -39,6 +36,9 @@ export default function ProfilePage() {
     const [isVip, setIsVip] = useState(false)
     const [profile, setProfile] = useState({ height: '', weight: '', age: '', gender: 'male', activityLevel: 'medium' })
     const [uploading, setUploading] = useState(false)
+
+    const GENDER_LABELS = { male: t('profile.genderMale', 'Male'), female: t('profile.genderFemale', 'Female') }
+    const ACTIVITY_LABELS = { low: t('profile.activityLow', 'Low'), medium: t('profile.activityMedium', 'Medium'), high: t('profile.activityHigh', 'High') }
 
     useEffect(() => {
         getCurrentUserInfo().then(info => {
@@ -78,7 +78,7 @@ export default function ProfilePage() {
     return (
         <main
             id="main-content"
-            aria-label="Profile page"
+            aria-label={t('profile.title', 'Profile')}
             className="flex-1 overflow-y-auto"
             style={{ minHeight: 0 }}
         >
@@ -86,8 +86,8 @@ export default function ProfilePage() {
 
                 {/* Header */}
                 <div className="mb-8 anim-down">
-                    <h1 className="text-2xl sm:text-3xl font-bold tracking-tight mb-1" style={{ color: 'var(--t-1)' }}>{t('profile.title')}</h1>
-                    <p className="text-[14px]" style={{ color: 'var(--t-3)' }}>Твоя особиста інформація та дані акаунта.</p>
+                    <h1 className="text-2xl sm:text-3xl font-bold tracking-tight mb-1" style={{ color: 'var(--t-1)' }}>{t('profile.title', 'Profile')}</h1>
+                    <p className="text-[14px]" style={{ color: 'var(--t-3)' }}>{t('profile.description', 'Your personal information and account details.')}</p>
                 </div>
 
                 {/* Identity card */}
@@ -116,8 +116,8 @@ export default function ProfilePage() {
                         </div>
                         <button
                             onClick={handleAvatarClick}
-                            aria-label="Change avatar"
-                            title="Змінити аватар"
+                            aria-label={t('profile.changeAvatar', 'Change avatar')}
+                            title={t('profile.changeAvatar', 'Change avatar')}
                             className="absolute -bottom-1.5 -right-1.5 w-7 h-7 rounded-full flex items-center justify-center transition-transform hover:scale-110"
                             style={{ background: 'var(--bg-raised)', border: '2px solid var(--bg-panel)', color: 'var(--t-1)' }}
                         >
@@ -143,7 +143,7 @@ export default function ProfilePage() {
                             }
                         >
                             {isVip && <Crown size={12} />}
-                            {isVip ? 'VIP' : 'Стандартний акаунт'}
+                            {isVip ? 'VIP' : t('profile.standardAccount', 'Standard Account')}
                         </div>
                     </div>
                 </div>
@@ -151,23 +151,23 @@ export default function ProfilePage() {
                 {/* Profile details */}
                 <section className="mb-8 anim-up">
                     <div className="flex items-center justify-between mb-3 px-1">
-                        <h2 className="text-[12px] font-bold uppercase tracking-widest" style={{ color: 'var(--t-3)' }}>{t('profile.profileData')}</h2>
+                        <h2 className="text-[12px] font-bold uppercase tracking-widest" style={{ color: 'var(--t-3)' }}>{t('profile.profileData', 'Profile Information')}</h2>
                         <button
                             onClick={() => navigate('/settings')}
                             className="flex items-center gap-1.5 text-[12px] font-medium transition-colors hover:text-white"
                             style={{ color: 'var(--t-3)' }}
                         >
                             <Pencil size={12} />
-                            {t('profile.edit')}
+                            {t('profile.edit', 'Edit')}
                         </button>
                     </div>
                     <div className="glass-card overflow-hidden" style={{ padding: 0 }}>
                         <div className="divide-y divide-white/5">
-                            <InfoRow icon={Ruler} label="Зріст" value={profile.height} unit=" см" />
-                            <InfoRow icon={Weight} label="Вага" value={profile.weight} unit=" кг" />
-                            <InfoRow icon={Cake} label="Вік" value={profile.age} unit=" р." />
-                            <InfoRow icon={Users} label="Стать" value={GENDER_LABELS[profile.gender] || profile.gender} />
-                            <InfoRow icon={Zap} label="Рівень активності" value={ACTIVITY_LABELS[profile.activityLevel] || profile.activityLevel} />
+                            <InfoRow icon={Ruler} label={t('profile.height', 'Height')} value={profile.height} unit={t('profile.cmUnit', ' cm')} />
+                            <InfoRow icon={Weight} label={t('profile.weight', 'Weight')} value={profile.weight} unit={t('profile.kgUnit', ' kg')} />
+                            <InfoRow icon={Cake} label={t('profile.age', 'Age')} value={profile.age} unit={t('profile.yrUnit', ' yr')} />
+                            <InfoRow icon={Users} label={t('profile.gender', 'Gender')} value={GENDER_LABELS[profile.gender] || profile.gender} />
+                            <InfoRow icon={Zap} label={t('profile.activityLevel', 'Activity Level')} value={ACTIVITY_LABELS[profile.activityLevel] || profile.activityLevel} />
                         </div>
                     </div>
                 </section>

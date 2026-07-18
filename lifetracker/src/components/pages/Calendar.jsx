@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { ChevronLeft, ChevronRight, CheckCircle2, FileText, Utensils, Plus, Trash2, Edit2, X, Clock } from 'lucide-react'
 import { getEntries, getCaloriesByDate, updateEntry, addEntry, deleteEntry, uid } from '../../utils/storage'
+import { useTranslation } from 'react-i18next'
 
 // Helper for classes
 function clsx(...args) { return args.filter(Boolean).join(' ') }
@@ -15,7 +16,7 @@ function toDateStr(d) {
   return `${y}-${m}-${day}`
 }
 
-function AddEntryModal({ onClose, onAdd, selectedDateStr, editEntry }) {
+function AddEntryModal({ onClose, onAdd, selectedDateStr, editEntry, t }) {
   const [type, setType] = useState(editEntry ? (editEntry.title ? 'task' : 'note') : 'task')
   const [text, setText] = useState(editEntry ? (editEntry.title || editEntry.content) : '')
   const [startTime, setStartTime] = useState(editEntry?.start_time || '')
@@ -33,7 +34,7 @@ function AddEntryModal({ onClose, onAdd, selectedDateStr, editEntry }) {
         <button onClick={onClose} className="absolute top-4 right-4 text-gray-400 hover:text-white transition-colors">
           <X size={20} />
         </button>
-        <h2 className="text-xl font-bold mb-6" style={{ color: 'var(--t-1)' }}>Add Entry ({selectedDateStr})</h2>
+        <h2 className="text-xl font-bold mb-6" style={{ color: 'var(--t-1)' }}>{t('calendar.addEntry', 'Add Entry')} ({selectedDateStr})</h2>
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <div className="flex gap-2">
             <button
@@ -41,14 +42,14 @@ function AddEntryModal({ onClose, onAdd, selectedDateStr, editEntry }) {
               onClick={() => setType('task')}
               className={clsx("flex-1 py-2 rounded-lg text-sm font-semibold transition-colors", type === 'task' ? "bg-indigo-500/20 text-indigo-400 border border-indigo-500/30" : "bg-white/5 text-gray-400 border border-transparent")}
             >
-              Task
+              {t('calendar.task', 'Task')}
             </button>
             <button
               type="button"
               onClick={() => setType('note')}
               className={clsx("flex-1 py-2 rounded-lg text-sm font-semibold transition-colors", type === 'note' ? "bg-sky-500/20 text-sky-400 border border-sky-500/30" : "bg-white/5 text-gray-400 border border-transparent")}
             >
-              Note
+              {t('calendar.note', 'Note')}
             </button>
           </div>
 
@@ -56,7 +57,7 @@ function AddEntryModal({ onClose, onAdd, selectedDateStr, editEntry }) {
             <>
               <input
                 type="text"
-                placeholder="Task title"
+                placeholder={t('calendar.taskTitle', 'Task title')}
                 value={text}
                 onChange={(e) => setText(e.target.value)}
                 className="w-full px-4 py-3 rounded-xl text-[15px] transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500/50"
@@ -88,7 +89,7 @@ function AddEntryModal({ onClose, onAdd, selectedDateStr, editEntry }) {
             </>
           ) : (
             <textarea
-              placeholder="Write your note here..."
+              placeholder={t('calendar.notePlaceholder', 'Write your note here...')}
               value={text}
               onChange={(e) => setText(e.target.value)}
               rows={4}
@@ -99,7 +100,7 @@ function AddEntryModal({ onClose, onAdd, selectedDateStr, editEntry }) {
           )}
 
           <button type="submit" className="btn-primary w-full py-3 rounded-xl mt-2 text-[15px]">
-            Save
+            {t('calendar.save', 'Save')}
           </button>
         </form>
       </div>
@@ -108,6 +109,7 @@ function AddEntryModal({ onClose, onAdd, selectedDateStr, editEntry }) {
 }
 
 export default function CalendarPage() {
+  const { t } = useTranslation()
   const [currentDate,  setCurrentDate]  = useState(new Date())
   const [selectedDate, setSelectedDate] = useState(new Date())
 
@@ -158,14 +160,14 @@ export default function CalendarPage() {
   }
 
   const handleDeleteTask = async (id) => {
-    if (confirm('Delete this task?')) {
+    if (confirm(t('calendar.deleteTask', 'Delete this task?'))) {
       await deleteEntry('tasks', id)
       loadData()
     }
   }
 
   const handleDeleteNote = async (id) => {
-    if (confirm('Delete this note?')) {
+    if (confirm(t('calendar.deleteNote', 'Delete this note?'))) {
       await deleteEntry('notes', id)
       loadData()
     }
@@ -231,7 +233,7 @@ export default function CalendarPage() {
   return (
     <main
       id="main-content"
-      aria-label="Calendar page"
+      aria-label={t('nav.calendar', 'Calendar')}
       className="flex-1 overflow-y-auto"
       style={{ minHeight: 0 }}
     >
@@ -255,7 +257,7 @@ export default function CalendarPage() {
                   className="px-4 py-2 rounded-xl text-sm font-semibold transition-colors duration-200 hover:brightness-110"
                   style={{ background: 'var(--bg-hover)', color: 'var(--t-1)', border: '1px solid var(--border)' }}
                 >
-                  Today
+                  {t('calendar.today', 'Today')}
                 </button>
                 <div className="flex items-center rounded-xl overflow-hidden" style={{ border: '1px solid var(--border)' }}>
                   <button onClick={prevMonth} className="p-2 transition-colors hover:brightness-110" style={{ background: 'var(--bg-hover)', color: 'var(--t-2)' }} aria-label="Previous month">
@@ -313,7 +315,7 @@ export default function CalendarPage() {
                       </div>
                       {dayObj.isCurrentMonth && hasActivity && (
                         <div className="px-1.5 py-0.5 mb-1 text-[10px] sm:text-[11px] font-medium rounded truncate" style={{ background: 'rgba(124,58,237,0.15)', color: '#a78bfa' }}>
-                          Activity Logged
+                          {t('calendar.activityLogged', 'Activity Logged')}
                         </div>
                       )}
                     </div>
@@ -329,7 +331,7 @@ export default function CalendarPage() {
               <h2 className="text-lg sm:text-xl font-bold tracking-tight" style={{ color: 'var(--t-1)' }}>
                 {formatSelectedDate(selectedDate)}
               </h2>
-              <button onClick={() => { setEditEntryData(null); setShowAddModal(true); }} className="icon-btn hover:text-indigo-400 transition-colors" aria-label="Add new entry">
+              <button onClick={() => { setEditEntryData(null); setShowAddModal(true); }} className="icon-btn hover:text-indigo-400 transition-colors" aria-label={t('calendar.addEntry', 'Add new entry')}>
                 <Plus size={18} />
               </button>
             </div>
@@ -338,7 +340,7 @@ export default function CalendarPage() {
               {/* Tasks */}
               <div>
                 <h3 className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.15em] text-indigo-400 mb-3">
-                  <CheckCircle2 size={15} /> Tasks
+                  <CheckCircle2 size={15} /> {t('calendar.tasks', 'Tasks')}
                 </h3>
                 {tasks.length > 0 ? (
                   <div className="space-y-2">
@@ -374,14 +376,14 @@ export default function CalendarPage() {
                     ))}
                   </div>
                 ) : (
-                  <p className="text-[12px] italic" style={{ color: 'var(--t-3)' }}>No tasks for this day.</p>
+                  <p className="text-[12px] italic" style={{ color: 'var(--t-3)' }}>{t('calendar.noTasks', 'No tasks for this day.')}</p>
                 )}
               </div>
 
               {/* Meals */}
               <div>
                 <h3 className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.15em] text-orange-400 mb-3">
-                  <Utensils size={15} /> Meals
+                  <Utensils size={15} /> {t('calendar.meals', 'Meals')}
                 </h3>
                 {meals.length > 0 ? (
                   <div className="space-y-2">
@@ -396,14 +398,14 @@ export default function CalendarPage() {
                     ))}
                   </div>
                 ) : (
-                  <p className="text-[12px] italic" style={{ color: 'var(--t-3)' }}>No meals logged.</p>
+                  <p className="text-[12px] italic" style={{ color: 'var(--t-3)' }}>{t('calendar.noMeals', 'No meals logged.')}</p>
                 )}
               </div>
 
               {/* Notes */}
               <div>
                 <h3 className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.15em] text-sky-400 mb-3">
-                  <FileText size={15} /> Notes
+                  <FileText size={15} /> {t('calendar.notes', 'Notes')}
                 </h3>
                 {notes.length > 0 ? (
                   <div className="space-y-3">
@@ -422,7 +424,7 @@ export default function CalendarPage() {
                     ))}
                   </div>
                 ) : (
-                  <p className="text-[12px] italic" style={{ color: 'var(--t-3)' }}>No notes.</p>
+                  <p className="text-[12px] italic" style={{ color: 'var(--t-3)' }}>{t('calendar.noNotes', 'No notes.')}</p>
                 )}
               </div>
             </div>
@@ -432,6 +434,7 @@ export default function CalendarPage() {
 
       {showAddModal && (
         <AddEntryModal
+          t={t}
           selectedDateStr={selectedDateStr}
           onClose={() => { setShowAddModal(false); setEditEntryData(null); }}
           onAdd={handleAddEntry}

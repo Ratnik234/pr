@@ -4,6 +4,7 @@ import {
   addEntry, deleteEntry, getCaloriesByDate, getDayTotals,
   getSettings, todayStr,
 } from '../../utils/storage'
+import { useTranslation } from 'react-i18next'
 
 // Helper for classes
 function clsx(...args) { return args.filter(Boolean).join(' ') }
@@ -36,7 +37,7 @@ function MacroCard({ label, value, target, unit, Icon, colorClass, gradientClass
 }
 
 // ─── AddFoodModal ─────────────────────────────────────────────────────────────
-function AddFoodModal({ onClose, onAdd }) {
+function AddFoodModal({ onClose, onAdd, t }) {
   const [form, setForm] = useState({ name: '', calories: '', protein: '', fat: '', carbs: '' })
   const [error, setError] = useState('')
 
@@ -46,7 +47,7 @@ function AddFoodModal({ onClose, onAdd }) {
   }
 
   function submit() {
-    if (!form.name.trim()) { setError(t('calories.enterMealName')) }
+    if (!form.name.trim()) { setError(t('calories.enterMealName', 'Enter meal name')); return }
     onAdd({
       name: form.name.trim(),
       calories: Number(form.calories) || 0,
@@ -57,27 +58,29 @@ function AddFoodModal({ onClose, onAdd }) {
     onClose()
   }
 
+  const fields = [
+    { id: 'name', labelKey: 'calories.foodName', type: 'text', placeholderKey: 'calories.foodNamePlaceholder' },
+    { id: 'calories', labelKey: 'calories.calories', type: 'number', placeholder: 'kcal' },
+    { id: 'protein', labelKey: 'calories.protein', type: 'number', placeholder: 'g' },
+    { id: 'fat', labelKey: 'calories.fat', type: 'number', placeholder: 'g' },
+    { id: 'carbs', labelKey: 'calories.carbs', type: 'number', placeholder: 'g' },
+  ]
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(6px)' }}>
       <div className="glass-card p-6 w-full max-w-md anim-up" style={{ border: '1px solid var(--border)' }}>
-        <h3 className="text-lg font-bold mb-5" style={{ color: 'var(--t-1)' }}>Add Food Entry</h3>
+        <h3 className="text-lg font-bold mb-5" style={{ color: 'var(--t-1)' }}>{t('calories.addFoodEntry', 'Add Food Entry')}</h3>
 
         <div className="space-y-3">
-          {[
-            { id: 'name', label: 'Food Name', type: 'text', placeholder: 'e.g. Grilled Chicken' },
-            { id: 'calories', label: 'Calories', type: 'number', placeholder: 'kcal' },
-            { id: 'protein', label: 'Protein (g)', type: 'number', placeholder: 'g' },
-            { id: 'fat', label: 'Fat (g)', type: 'number', placeholder: 'g' },
-            { id: 'carbs', label: 'Carbs (g)', type: 'number', placeholder: 'g' },
-          ].map(({ id, label, type, placeholder }) => (
+          {fields.map(({ id, labelKey, type, placeholder, placeholderKey }) => (
             <div key={id}>
               <label className="block text-[11px] font-semibold uppercase tracking-wider mb-1" style={{ color: 'var(--t-3)' }}>
-                {label}
+                {t(labelKey)}
               </label>
               <input
                 id={`food-input-${id}`}
                 type={type}
-                placeholder={placeholder}
+                placeholder={placeholderKey ? t(placeholderKey) : placeholder}
                 value={form[id]}
                 onChange={e => handle(id, e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && submit()}
@@ -102,14 +105,14 @@ function AddFoodModal({ onClose, onAdd }) {
             className="flex-1 py-2.5 rounded-xl text-[13px] font-semibold transition-colors"
             style={{ background: 'var(--bg-hover)', color: 'var(--t-2)', border: '1px solid var(--border)' }}
           >
-            Cancel
+            {t('calories.cancel', 'Cancel')}
           </button>
           <button
             id="add-food-submit"
             onClick={submit}
             className="flex-1 py-2.5 rounded-xl text-[13px] font-semibold btn-primary"
           >
-            Add Food
+            {t('calories.addFood', 'Add Food')}
           </button>
         </div>
       </div>
@@ -119,6 +122,7 @@ function AddFoodModal({ onClose, onAdd }) {
 
 // ─── CaloriesPage ─────────────────────────────────────────────────────────────
 export default function CaloriesPage() {
+  const { t } = useTranslation()
   const today = todayStr()
   const [foods, setFoods] = useState([])
   const [totals, setTotals] = useState({ calories: 0, protein: 0, fat: 0, carbs: 0 })
@@ -160,7 +164,7 @@ export default function CaloriesPage() {
   return (
     <main
       id="main-content"
-      aria-label="Calories page"
+      aria-label={t('calories.title', "Today's Calories")}
       className="flex-1 overflow-y-auto"
       style={{ minHeight: 0 }}
     >
@@ -169,8 +173,8 @@ export default function CaloriesPage() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 anim-down">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight mb-1" style={{ color: 'var(--t-1)' }}>Today's Calories</h1>
-            <p className="text-[14px]" style={{ color: 'var(--t-3)' }}>Track your nutrition and macro goals.</p>
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight mb-1" style={{ color: 'var(--t-1)' }}>{t('calories.title', "Today's Calories")}</h1>
+            <p className="text-[14px]" style={{ color: 'var(--t-3)' }}>{t('calories.subtitle', 'Track your nutrition and macro goals.')}</p>
           </div>
           <button
             id="add-food-btn"
@@ -178,29 +182,29 @@ export default function CaloriesPage() {
             className="btn-primary flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-[13px] transition-transform hover:scale-105"
           >
             <Plus size={16} />
-            Add Food
+            {t('calories.addFood', 'Add Food')}
           </button>
         </div>
 
         {/* 4 Macro Cards */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-          <MacroCard label="Calories" value={totals.calories} target={goals.calories} unit="kcal" Icon={Flame} colorClass="#f97316" gradientClass="bg-gradient-to-br from-orange-400 to-pink-500" delay="anim-delay-1" />
-          <MacroCard label="Protein" value={totals.protein} target={goals.protein} unit="g" Icon={Beef} colorClass="#a78bfa" gradientClass="bg-gradient-to-br from-violet-500 to-indigo-600" delay="anim-delay-2" />
-          <MacroCard label="Fat" value={totals.fat} target={goals.fat} unit="g" Icon={Droplet} colorClass="#38bdf8" gradientClass="bg-gradient-to-br from-sky-400 to-blue-600" delay="anim-delay-3" />
-          <MacroCard label="Carbs" value={totals.carbs} target={goals.carbs} unit="g" Icon={Wheat} colorClass="#34d399" gradientClass="bg-gradient-to-br from-emerald-400 to-teal-500" delay="anim-delay-4" />
+          <MacroCard label={t('calories.calories', 'Calories')} value={totals.calories} target={goals.calories} unit={t('calories.kcal', 'kcal')} Icon={Flame} colorClass="#f97316" gradientClass="bg-gradient-to-br from-orange-400 to-pink-500" delay="anim-delay-1" />
+          <MacroCard label={t('calories.protein', 'Protein')} value={totals.protein} target={goals.protein} unit="g" Icon={Beef} colorClass="#a78bfa" gradientClass="bg-gradient-to-br from-violet-500 to-indigo-600" delay="anim-delay-2" />
+          <MacroCard label={t('calories.fat', 'Fat')} value={totals.fat} target={goals.fat} unit="g" Icon={Droplet} colorClass="#38bdf8" gradientClass="bg-gradient-to-br from-sky-400 to-blue-600" delay="anim-delay-3" />
+          <MacroCard label={t('calories.carbs', 'Carbs')} value={totals.carbs} target={goals.carbs} unit="g" Icon={Wheat} colorClass="#34d399" gradientClass="bg-gradient-to-br from-emerald-400 to-teal-500" delay="anim-delay-4" />
         </div>
 
         {/* Food Log Table */}
         <div className="glass-card overflow-hidden anim-up anim-delay-5" style={{ padding: 0 }}>
 
           <div className="p-5 border-b flex flex-col sm:flex-row sm:items-center justify-between gap-4" style={{ borderColor: 'var(--border)' }}>
-            <h2 className="text-lg font-bold tracking-tight" style={{ color: 'var(--t-1)' }}>Food Log</h2>
+            <h2 className="text-lg font-bold tracking-tight" style={{ color: 'var(--t-1)' }}>{t('calories.foodLog', 'Food Log')}</h2>
             <div className="relative">
               <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--t-3)' }} />
               <input
                 id="food-search"
                 type="text"
-                placeholder="Search food..."
+                placeholder={t('calories.searchFood', 'Search food...')}
                 value={search}
                 onChange={e => setSearch(e.target.value)}
                 className="w-full sm:w-64 border rounded-xl py-2 pl-9 pr-3 text-[13px] transition-colors"
@@ -212,18 +216,18 @@ export default function CaloriesPage() {
           <div className="overflow-x-auto">
             {filtered.length === 0 ? (
               <div className="p-10 text-center" style={{ color: 'var(--t-3)' }}>
-                <p className="text-[14px] font-medium">No food entries for today yet.</p>
-                <p className="text-[12px] mt-1">Click «Add Food» to log your first meal.</p>
+                <p className="text-[14px] font-medium">{t('calories.noFoods', 'No foods logged yet')}</p>
+                <p className="text-[12px] mt-1">{t('calories.noFoodsHint', 'Click «Add Food» to log your first meal.')}</p>
               </div>
             ) : (
               <table className="w-full text-left border-collapse min-w-[600px]">
                 <thead>
                   <tr className="border-b" style={{ background: 'var(--bg-raised)', borderColor: 'var(--border)' }}>
-                    <th className="px-5 py-3 text-[11px] font-bold uppercase tracking-widest" style={{ color: 'var(--t-3)' }}>Food</th>
-                    <th className="px-5 py-3 text-[11px] font-bold uppercase tracking-widest" style={{ color: 'var(--t-3)' }}>Calories</th>
-                    <th className="px-5 py-3 text-[11px] font-bold uppercase tracking-widest text-violet-400">Protein</th>
-                    <th className="px-5 py-3 text-[11px] font-bold uppercase tracking-widest text-sky-400">Fat</th>
-                    <th className="px-5 py-3 text-[11px] font-bold uppercase tracking-widest text-emerald-400">Carbs</th>
+                    <th className="px-5 py-3 text-[11px] font-bold uppercase tracking-widest" style={{ color: 'var(--t-3)' }}>{t('calories.food', 'Food')}</th>
+                    <th className="px-5 py-3 text-[11px] font-bold uppercase tracking-widest" style={{ color: 'var(--t-3)' }}>{t('calories.calories', 'Calories')}</th>
+                    <th className="px-5 py-3 text-[11px] font-bold uppercase tracking-widest text-violet-400">{t('calories.protein', 'Protein')}</th>
+                    <th className="px-5 py-3 text-[11px] font-bold uppercase tracking-widest text-sky-400">{t('calories.fat', 'Fat')}</th>
+                    <th className="px-5 py-3 text-[11px] font-bold uppercase tracking-widest text-emerald-400">{t('calories.carbs', 'Carbs')}</th>
                     <th className="px-5 py-3 text-[11px] font-bold uppercase tracking-widest" style={{ color: 'var(--t-3)' }}></th>
                   </tr>
                 </thead>
@@ -236,7 +240,7 @@ export default function CaloriesPage() {
                       </td>
                       <td className="px-5 py-4">
                         <span className="inline-flex items-center gap-1 text-[13px] font-bold text-orange-400 bg-orange-400/10 px-2.5 py-1 rounded-md border border-orange-400/20">
-                          {food.calories} kcal
+                          {food.calories} {t('calories.kcal', 'kcal')}
                         </span>
                       </td>
                       <td className="px-5 py-4 text-[13px] font-semibold" style={{ color: 'var(--t-2)' }}>{food.protein}g</td>
@@ -262,8 +266,8 @@ export default function CaloriesPage() {
           {/* Footer */}
           <div className="p-4 border-t flex justify-end" style={{ borderColor: 'var(--border)', background: 'var(--bg-raised)' }}>
             <div className="flex items-center gap-4 text-sm font-bold">
-              <span style={{ color: 'var(--t-3)' }}>Total:</span>
-              <span className="text-orange-400 text-base">{totals.calories} kcal</span>
+              <span style={{ color: 'var(--t-3)' }}>{t('calories.total', 'Total')}:</span>
+              <span className="text-orange-400 text-base">{totals.calories} {t('calories.kcal', 'kcal')}</span>
             </div>
           </div>
         </div>
@@ -272,6 +276,7 @@ export default function CaloriesPage() {
       {/* Modal */}
       {showModal && (
         <AddFoodModal
+          t={t}
           onClose={() => setShowModal(false)}
           onAdd={handleAdd}
         />
