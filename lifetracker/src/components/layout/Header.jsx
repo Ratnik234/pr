@@ -4,14 +4,15 @@ import { Bell, Menu, Activity, User, LogOut } from 'lucide-react'
 import { getCurrentUserInfo, getSettings } from '../../utils/storage'
 import { useTranslation } from 'react-i18next'
 
-function useDate() {
+function useDate(lang) {
   return useMemo(() => {
+    const locale = lang === 'ua' ? 'uk-UA' : 'en-US'
     const now = new Date()
-    const weekday = now.toLocaleDateString('en-US', { weekday: 'long' })
-    const dateStr = now.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+    const weekday = now.toLocaleDateString(locale, { weekday: 'long' })
+    const dateStr = now.toLocaleDateString(locale, { month: 'long', day: 'numeric', year: 'numeric' })
     const isoDate = now.toISOString().split('T')[0]
     return { weekday, dateStr, isoDate }
-  }, [])
+  }, [lang])
 }
 
 
@@ -114,7 +115,8 @@ function Avatar({ username, avatarUrl }) {
 
 // ─── Header ──────────────────────────────────────────────────────────────────
 export default function Header({ onMenuOpen, onOpenModal }) {
-  const { weekday, dateStr, isoDate } = useDate()
+  const { i18n } = useTranslation()
+  const { weekday, dateStr, isoDate } = useDate(i18n.language)
   const [username, setUsername] = useState('')
   const [avatarUrl, setAvatarUrl] = useState(null)
 

@@ -40,8 +40,8 @@ function getLast7Days() {
   })
 }
 
-function shortDay(isoDate) {
-  return new Date(isoDate).toLocaleDateString('en-US', { weekday: 'short' })
+function shortDay(isoDate, locale = 'en-US') {
+  return new Date(isoDate).toLocaleDateString(locale, { weekday: 'short' })
 }
 
 // ─── Components ───────────────────────────────────────────────────────────────
@@ -155,7 +155,8 @@ function RecommendationsSection({ workouts, t }) {
 
 // ─── StatisticsPage ───────────────────────────────────────────────────────────
 export default function StatisticsPage() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
+  const dateLocale = i18n.language === 'ua' ? 'uk-UA' : 'en-US'
   const [weeklyData,    setWeeklyData]    = useState({ labels: [], values: [], calorieLimit: 2200 })
   const [weightData,    setWeightData]    = useState({ labels: [], values: [] })
   const [streak,        setStreak]        = useState(0)
@@ -187,7 +188,7 @@ export default function StatisticsPage() {
     const values = dayTotals.map(t => t.calories)
     const total  = values.reduce((a, b) => a + b, 0)
 
-    setWeeklyData({ labels: days.map(shortDay), values, calorieLimit: goal })
+    setWeeklyData({ labels: days.map(d => shortDay(d, dateLocale)), values, calorieLimit: goal })
     setTotalWeekCal(total)
     setStreak(streakVal)
 
@@ -199,7 +200,7 @@ export default function StatisticsPage() {
       if (entry) lastWeight = entry.weight
       return lastWeight
     })
-    setWeightData({ labels: days.map(shortDay), values: wValues })
+    setWeightData({ labels: days.map(d => shortDay(d, dateLocale)), values: wValues })
 
     // Activity & Workouts
     const todayAct = await getActivityLog(todayStr())

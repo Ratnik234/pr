@@ -227,7 +227,14 @@
     "noNotes": "No notes.",
     "activityLogged": "Activity Logged",
     "deleteTask": "Delete this task?",
-    "deleteNote": "Delete this note?"
+    "deleteNote": "Delete this note?",
+    "daySun": "Sun",
+    "dayMon": "Mon",
+    "dayTue": "Tue",
+    "dayWed": "Wed",
+    "dayThu": "Thu",
+    "dayFri": "Fri",
+    "daySat": "Sat"
   },
   "auth": {
     "login": "Sign In",
@@ -242,7 +249,9 @@
     "hasAccount": "Already have an account?",
     "processing": "Processing...",
     "fillAllFields": "Please fill in all fields",
-    "genericError": "An error occurred. Please try again."
+    "genericError": "An error occurred. Please try again.",
+    "usernameExists": "This username is already taken",
+    "invalidCredentials": "Invalid username or password"
   },
   "header": {
     "profile": "Profile",

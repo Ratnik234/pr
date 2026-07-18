@@ -3,6 +3,14 @@ import { Activity, Lock, User, ArrowRight } from 'lucide-react'
 import { loginUser, registerUser } from '../../utils/storage'
 import { useTranslation } from 'react-i18next'
 
+// Server responses come back in English regardless of UI language.
+// Map the known messages to translation keys so errors display correctly.
+const SERVER_ERROR_KEYS = {
+  'Username already exists': 'auth.usernameExists',
+  'Invalid username or password': 'auth.invalidCredentials',
+  'Server error': 'auth.genericError',
+}
+
 export default function AuthPage({ onLoginSuccess }) {
   const { t } = useTranslation()
   const [isLogin, setIsLogin] = useState(true)
@@ -31,7 +39,8 @@ export default function AuthPage({ onLoginSuccess }) {
       if (res.ok) {
         onLoginSuccess()
       } else {
-        setError(res.message)
+        const key = SERVER_ERROR_KEYS[res.message]
+        setError(key ? t(key, res.message) : res.message)
       }
     } catch (err) {
       setError(t('auth.genericError', 'An error occurred. Please try again.'))

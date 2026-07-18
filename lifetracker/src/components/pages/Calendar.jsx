@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next'
 // Helper for classes
 function clsx(...args) { return args.filter(Boolean).join(' ') }
 
-const DAYS_OF_WEEK = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+const DAYS_OF_WEEK = ['calendar.daySun', 'calendar.dayMon', 'calendar.dayTue', 'calendar.dayWed', 'calendar.dayThu', 'calendar.dayFri', 'calendar.daySat']
 
 // Helper to format Date to YYYY-MM-DD
 function toDateStr(d) {
@@ -109,7 +109,8 @@ function AddEntryModal({ onClose, onAdd, selectedDateStr, editEntry, t }) {
 }
 
 export default function CalendarPage() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
+  const dateLocale = i18n.language === 'ua' ? 'uk-UA' : 'en-US'
   const [currentDate,  setCurrentDate]  = useState(new Date())
   const [selectedDate, setSelectedDate] = useState(new Date())
 
@@ -227,8 +228,8 @@ export default function CalendarPage() {
   const isSelected = (d) => d.getDate() === selectedDate.getDate() && d.getMonth() === selectedDate.getMonth() && d.getFullYear() === selectedDate.getFullYear()
   const hasData    = (d) => allTaskDates.has(toDateStr(d))
 
-  const formatHeader       = (d) => d.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
-  const formatSelectedDate = (d) => d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })
+  const formatHeader       = (d) => d.toLocaleDateString(dateLocale, { month: 'long', year: 'numeric' })
+  const formatSelectedDate = (d) => d.toLocaleDateString(dateLocale, { weekday: 'long', month: 'long', day: 'numeric' })
 
   return (
     <main
@@ -275,10 +276,10 @@ export default function CalendarPage() {
             <div className="rounded-xl overflow-hidden" style={{ border: '1px solid var(--border)' }}>
               {/* Days Header */}
               <div className="grid grid-cols-7 border-b" style={{ borderColor: 'var(--border)', background: 'var(--bg-raised)' }}>
-                {DAYS_OF_WEEK.map((day, i) => (
-                  <div key={day} className="py-3 text-center text-[11px] font-bold uppercase tracking-wider"
+                {DAYS_OF_WEEK.map((dayKey, i) => (
+                  <div key={dayKey} className="py-3 text-center text-[11px] font-bold uppercase tracking-wider"
                        style={{ color: (i === 0 || i === 6) ? '#f87171' : 'var(--t-3)' }}>
-                    {day}
+                    {t(dayKey)}
                   </div>
                 ))}
               </div>
