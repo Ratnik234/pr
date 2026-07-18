@@ -1,19 +1,21 @@
 import { NavLink } from 'react-router-dom'
 import { Home, Calendar, Apple, BarChart2, Settings } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 
 const NAV = [
-  { id: 'home',       path: '/',           label: 'Home',    Icon: Home      },
-  { id: 'calendar',   path: '/calendar',   label: 'Calendar',Icon: Calendar  },
-  { id: 'calories',   path: '/calories',   label: 'Calories',Icon: Apple     },
-  { id: 'statistics', path: '/statistics', label: 'Stats',   Icon: BarChart2 },
-  { id: 'settings',   path: '/settings',   label: 'Settings',Icon: Settings  },
+  { id: 'home',       path: '/',           labelKey: 'nav.home',     Icon: Home      },
+  { id: 'calendar',   path: '/calendar',   labelKey: 'nav.calendar', Icon: Calendar  },
+  { id: 'calories',   path: '/calories',   labelKey: 'nav.calories', Icon: Apple     },
+  { id: 'statistics', path: '/statistics', labelKey: 'nav.stats',    Icon: BarChart2 },
+  { id: 'settings',   path: '/settings',   labelKey: 'nav.settings', Icon: Settings  },
 ]
 
 export default function BottomNav() {
+  const { t } = useTranslation()
   return (
     <nav
       id="bottom-navigation"
-      aria-label="Mobile navigation"
+      aria-label={t('nav.home', 'Mobile navigation')}
       className="fixed bottom-0 inset-x-0 z-20 lg:hidden"
     >
       {/* Gradient veil above nav */}
@@ -28,11 +30,11 @@ export default function BottomNav() {
         style={{ borderTop: '1px solid var(--border)' }}
       >
         <ul role="list" className="flex items-stretch">
-          {NAV.map(({ id, path, label, Icon }) => (
+          {NAV.map(({ id, path, labelKey, Icon }) => (
             <li key={id} className="flex-1">
               <NavLink
                 to={path}
-                aria-label={label}
+                aria-label={t(labelKey)}
                 className={({ isActive }) => `w-full flex flex-col items-center gap-1 py-3 relative transition-colors duration-200 group ${isActive ? 'active-nav' : ''}`}
                 style={({ isActive }) => ({ color: isActive ? '#a78bfa' : 'var(--t-3)' })}
               >
@@ -58,7 +60,7 @@ export default function BottomNav() {
                       <Icon size={19} />
                     </span>
 
-                    <span className="text-[10px] font-semibold leading-none tracking-wide">{label}</span>
+                    <span className="text-[10px] font-semibold leading-none tracking-wide">{t(labelKey)}</span>
                   </>
                 )}
               </NavLink>

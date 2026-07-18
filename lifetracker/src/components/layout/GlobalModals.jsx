@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { X, Calendar as CalendarIcon, Clock } from 'lucide-react'
 import { addEntry, getSettings, updateSettings, uid, todayStr } from '../../utils/storage'
+import { useTranslation } from 'react-i18next'
 
 export default function GlobalModals({ activeModal, onClose }) {
   if (!activeModal) return null
@@ -20,6 +21,7 @@ export default function GlobalModals({ activeModal, onClose }) {
 }
 
 function TaskForm({ onClose }) {
+  const { t } = useTranslation()
   const [title, setTitle] = useState('')
   const [startTime, setStartTime] = useState('')
   const [endTime, setEndTime] = useState('')
@@ -42,11 +44,11 @@ function TaskForm({ onClose }) {
 
   return (
     <>
-      <h2 className="text-xl font-bold mb-6" style={{ color: 'var(--t-1)' }}>Add Task</h2>
+      <h2 className="text-xl font-bold mb-6" style={{ color: 'var(--t-1)' }}>{t('modals.addTask', 'Add Task')}</h2>
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         <input 
           type="text" 
-          placeholder="Task title" 
+          placeholder={t('modals.taskTitle', 'Task title')} 
           value={title} 
           onChange={(e) => setTitle(e.target.value)} 
           autoFocus 
@@ -75,13 +77,14 @@ function TaskForm({ onClose }) {
             />
           </div>
         </div>
-        <button type="submit" className="btn-primary py-3 rounded-xl">Save</button>
+        <button type="submit" className="btn-primary py-3 rounded-xl">{t('modals.save', 'Save')}</button>
       </form>
     </>
   )
 }
 
 function MealForm({ onClose }) {
+  const { t } = useTranslation()
   const [name, setName] = useState('')
   const [calories, setCalories] = useState('')
 
@@ -96,11 +99,11 @@ function MealForm({ onClose }) {
 
   return (
     <>
-      <h2 className="text-xl font-bold mb-6 text-orange-400">Log Meal</h2>
+      <h2 className="text-xl font-bold mb-6 text-orange-400">{t('modals.logMeal', 'Log Meal')}</h2>
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         <input 
           type="text" 
-          placeholder="Meal name" 
+          placeholder={t('modals.mealName', 'Meal name')} 
           value={name} 
           onChange={(e) => setName(e.target.value)} 
           autoFocus 
@@ -109,19 +112,20 @@ function MealForm({ onClose }) {
         />
         <input 
           type="number" 
-          placeholder="Calories" 
+          placeholder={t('modals.caloriesPlaceholder', 'Calories')} 
           value={calories} 
           onChange={(e) => setCalories(e.target.value)} 
           className="w-full px-4 py-3 rounded-xl text-[15px] outline-none" 
           style={{ background: 'var(--bg-raised)', border: '1px solid var(--border)', color: 'var(--t-1)' }} 
         />
-        <button type="submit" className="btn-primary py-3 rounded-xl" style={{ background: '#f97316', color: 'white' }}>Save</button>
+        <button type="submit" className="btn-primary py-3 rounded-xl" style={{ background: '#f97316', color: 'white' }}>{t('modals.save', 'Save')}</button>
       </form>
     </>
   )
 }
 
 function WaterForm({ onClose }) {
+  const { t } = useTranslation()
   const [ml, setMl] = useState('')
 
   const handleSubmit = async (e) => {
@@ -139,18 +143,18 @@ function WaterForm({ onClose }) {
 
   return (
     <>
-      <h2 className="text-xl font-bold mb-6 text-sky-400">Add Water</h2>
+      <h2 className="text-xl font-bold mb-6 text-sky-400">{t('modals.addWater', 'Add Water')}</h2>
       <form onSubmit={handleSubmit} className="flex flex-col gap-4">
         <input 
           type="number" 
-          placeholder="Volume (ml)" 
+          placeholder={t('modals.volumeMl', 'Volume (ml)')} 
           value={ml} 
           onChange={(e) => setMl(e.target.value)} 
           autoFocus 
           className="w-full px-4 py-3 rounded-xl text-[15px] outline-none" 
           style={{ background: 'var(--bg-raised)', border: '1px solid var(--border)', color: 'var(--t-1)' }} 
         />
-        <button type="submit" className="btn-primary py-3 rounded-xl" style={{ background: 'var(--sky)', color: 'white' }}>Save</button>
+        <button type="submit" className="btn-primary py-3 rounded-xl" style={{ background: 'var(--sky)', color: 'white' }}>{t('modals.save', 'Save')}</button>
       </form>
     </>
   )

@@ -1,8 +1,10 @@
 import { useState } from 'react'
 import { Activity, Lock, User, ArrowRight } from 'lucide-react'
 import { loginUser, registerUser } from '../../utils/storage'
+import { useTranslation } from 'react-i18next'
 
 export default function AuthPage({ onLoginSuccess }) {
+  const { t } = useTranslation()
   const [isLogin, setIsLogin] = useState(true)
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
@@ -13,7 +15,7 @@ export default function AuthPage({ onLoginSuccess }) {
     e.preventDefault()
     setError('')
     if (!username.trim() || !password.trim()) {
-      setError('Please fill in all fields')
+      setError(t('auth.fillAllFields', 'Please fill in all fields'))
       return
     }
 
@@ -32,7 +34,7 @@ export default function AuthPage({ onLoginSuccess }) {
         setError(res.message)
       }
     } catch (err) {
-      setError('An error occurred. Please try again.')
+      setError(t('auth.genericError', 'An error occurred. Please try again.'))
     } finally {
       setLoading(false)
     }
@@ -53,7 +55,7 @@ export default function AuthPage({ onLoginSuccess }) {
           </div>
           <h1 className="text-2xl font-bold tracking-tight gradient-brand">LifeTracker</h1>
           <p className="text-[13px] font-medium mt-1" style={{ color: 'var(--t-3)' }}>
-            {isLogin ? 'Welcome back! Please login.' : 'Create your account.'}
+            {isLogin ? t('auth.welcomeBack', 'Welcome back! Please login.') : t('auth.createAccount', 'Create your account.')}
           </p>
         </div>
 
@@ -65,14 +67,14 @@ export default function AuthPage({ onLoginSuccess }) {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-[12px] font-bold uppercase tracking-wider mb-1.5" style={{ color: 'var(--t-2)' }}>Username</label>
+            <label className="block text-[12px] font-bold uppercase tracking-wider mb-1.5" style={{ color: 'var(--t-2)' }}>{t('auth.username', 'Username')}</label>
             <div className="relative">
               <User size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2" style={{ color: 'var(--t-3)' }} />
               <input
                 type="text"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                placeholder="Enter username"
+                placeholder={t('auth.usernamePlaceholder', 'Enter username')}
                 className="w-full pl-10 pr-4 py-3 rounded-xl text-[14px] outline-none transition-all"
                 style={{ background: 'var(--bg-raised)', border: '1px solid var(--border)', color: 'var(--t-1)' }}
                 autoFocus
@@ -81,14 +83,14 @@ export default function AuthPage({ onLoginSuccess }) {
           </div>
 
           <div>
-            <label className="block text-[12px] font-bold uppercase tracking-wider mb-1.5" style={{ color: 'var(--t-2)' }}>Password</label>
+            <label className="block text-[12px] font-bold uppercase tracking-wider mb-1.5" style={{ color: 'var(--t-2)' }}>{t('auth.password', 'Password')}</label>
             <div className="relative">
               <Lock size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2" style={{ color: 'var(--t-3)' }} />
               <input
                 type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="Enter password"
+                placeholder={t('auth.passwordPlaceholder', 'Enter password')}
                 className="w-full pl-10 pr-4 py-3 rounded-xl text-[14px] outline-none transition-all"
                 style={{ background: 'var(--bg-raised)', border: '1px solid var(--border)', color: 'var(--t-1)' }}
               />
@@ -100,20 +102,20 @@ export default function AuthPage({ onLoginSuccess }) {
             disabled={loading}
             className="w-full btn-primary py-3.5 rounded-xl text-[14px] font-bold flex items-center justify-center gap-2 mt-6 disabled:opacity-50"
           >
-            {loading ? 'Processing...' : isLogin ? 'Sign In' : 'Sign Up'}
+            {loading ? t('auth.processing', 'Processing...') : isLogin ? t('auth.login', 'Sign In') : t('auth.register', 'Sign Up')}
             {!loading && <ArrowRight size={16} />}
           </button>
         </form>
 
         <div className="mt-6 text-center">
           <p className="text-[13px]" style={{ color: 'var(--t-3)' }}>
-            {isLogin ? "Don't have an account? " : "Already have an account? "}
+            {isLogin ? t('auth.noAccount', "Don't have an account?") : t('auth.hasAccount', 'Already have an account?')}{' '}
             <button
               onClick={() => { setIsLogin(!isLogin); setError('') }}
               className="font-bold hover:underline transition-colors"
               style={{ color: '#a78bfa' }}
             >
-              {isLogin ? 'Sign Up' : 'Sign In'}
+              {isLogin ? t('auth.register', 'Sign Up') : t('auth.login', 'Sign In')}
             </button>
           </p>
         </div>

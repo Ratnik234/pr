@@ -2,6 +2,7 @@ import { useMemo, useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { Bell, Menu, Activity, User, LogOut } from 'lucide-react'
 import { getCurrentUserInfo, getSettings } from '../../utils/storage'
+import { useTranslation } from 'react-i18next'
 
 function useDate() {
   return useMemo(() => {
@@ -31,6 +32,7 @@ function DateBadge({ weekday, dateStr, isoDate }) {
 // ─── Avatar ───────────────────────────────────────────────────────────────────
 function Avatar({ username, avatarUrl }) {
   const navigate = useNavigate()
+  const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const rootRef = useRef(null)
   const initial = username ? username.charAt(0).toUpperCase() : 'U'
@@ -53,7 +55,7 @@ function Avatar({ username, avatarUrl }) {
     <div className="relative" ref={rootRef}>
       <button
         id="header-avatar"
-        aria-label="User profile"
+        aria-label={t('header.profile', 'User profile')}
         aria-haspopup="menu"
         aria-expanded={open}
         onClick={() => setOpen(o => !o)}
@@ -76,7 +78,7 @@ function Avatar({ username, avatarUrl }) {
         </div>
         <div className="hidden lg:block text-left">
           <p className="text-[13px] font-semibold leading-tight" style={{ color: 'var(--t-1)' }}>{username || 'User'}</p>
-          <p className="text-[11px] leading-tight" style={{ color: 'var(--t-3)' }}>Pro Plan</p>
+          <p className="text-[11px] leading-tight" style={{ color: 'var(--t-3)' }}>{t('header.proPlan', 'Pro Plan')}</p>
         </div>
       </button>
 
@@ -93,7 +95,7 @@ function Avatar({ username, avatarUrl }) {
             style={{ color: 'var(--t-1)' }}
           >
             <User size={16} />
-            Профіль
+            {t('header.profile', 'Profile')}
           </button>
           <div style={{ height: 1, background: 'var(--border)' }} aria-hidden="true" />
           <button
@@ -102,7 +104,7 @@ function Avatar({ username, avatarUrl }) {
             className="w-full flex items-center gap-2.5 text-[13px] font-medium px-4 py-3 transition-colors hover:bg-red-500/10 text-left text-red-400"
           >
             <LogOut size={16} />
-            Вийти
+            {t('header.logout', 'Logout')}
           </button>
         </div>
       )}

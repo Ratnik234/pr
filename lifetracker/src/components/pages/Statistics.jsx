@@ -244,7 +244,7 @@ export default function StatisticsPage() {
     labels: weeklyData.labels,
     datasets: [{
       fill: true,
-      label: 'Calories',
+      label: t('calories.calories', 'Calories'),
       data: weeklyData.values,
       borderColor: '#7c3aed',
       backgroundColor: 'rgba(124, 58, 237, 0.2)',
@@ -263,7 +263,7 @@ export default function StatisticsPage() {
     labels: weightData.labels,
     datasets: [{
       fill: true,
-      label: 'Weight (kg)',
+      label: t('stats.weightKg', 'Weight (kg)'),
       data: weightData.values,
       borderColor: '#0ea5e9',
       backgroundColor: 'rgba(14, 165, 233, 0.2)',
@@ -282,7 +282,7 @@ export default function StatisticsPage() {
   const barData = {
     labels: weeklyData.labels,
     datasets: [{
-      label: 'Calories',
+      label: t('calories.calories', 'Calories'),
       data: weeklyData.values,
       backgroundColor: weeklyData.values.map(v =>
         v > weeklyData.calorieLimit ? 'rgba(239,68,68,0.7)' : 'rgba(79,122,74,0.7)'
@@ -329,7 +329,7 @@ export default function StatisticsPage() {
   return (
     <main
       id="main-content"
-      aria-label="Statistics page"
+      aria-label={t('stats.title', 'Statistics')}
       className="flex-1 overflow-y-auto"
       style={{ minHeight: 0 }}
     >
@@ -338,51 +338,51 @@ export default function StatisticsPage() {
         {/* Header */}
         <div className="anim-down">
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight mb-1" style={{ color: 'var(--t-1)' }}>{t('stats.title', 'Statistics')}</h1>
-          <p className="text-[14px]" style={{ color: 'var(--t-3)' }}>Deep dive into your health and productivity data.</p>
+          <p className="text-[14px]" style={{ color: 'var(--t-3)' }}>{t('stats.subtitle', 'Deep dive into your health and productivity data.')}</p>
         </div>
 
         {/* 4 Info Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-          <StatCard title="Weekly Calories"  value={totalWeekCal.toLocaleString()}                         subtitle="Total this week"            trend={0}              Icon={Flame}         gradientClass="bg-gradient-to-br from-orange-400 to-pink-500"    delay="anim-delay-1" />
-          <StatCard title="Streak"           value={streak}                                                subtitle={`${streak} days in a row`} trend={streak > 0 ? 5 : 0} Icon={CalendarCheck} gradientClass="bg-gradient-to-br from-violet-500 to-indigo-600" delay="anim-delay-2" />
-          <StatCard title="Daily Goal"       value={weeklyData.calorieLimit}                               subtitle="kcal target / day"          trend={0}              Icon={CheckSquare}   gradientClass="bg-gradient-to-br from-sky-400 to-blue-600"       delay="anim-delay-3" />
-          <StatCard title="Days Tracked"     value={weeklyData.values.filter(v => v > 0).length}           subtitle="Out of last 7 days"         trend={18}             Icon={Trophy}        gradientClass="bg-gradient-to-br from-amber-400 to-orange-500"   delay="anim-delay-4" />
+          <StatCard title={t('stats.weeklyCalories', 'Weekly Calories')} value={totalWeekCal.toLocaleString()} subtitle={t('stats.totalThisWeek', 'Total this week')} trend={0} Icon={Flame} gradientClass="bg-gradient-to-br from-orange-400 to-pink-500" delay="anim-delay-1" />
+          <StatCard title={t('stats.streak', 'Streak')} value={streak} subtitle={t('stats.daysInARow', '{{count}} days in a row', { count: streak })} trend={streak > 0 ? 5 : 0} Icon={CalendarCheck} gradientClass="bg-gradient-to-br from-violet-500 to-indigo-600" delay="anim-delay-2" />
+          <StatCard title={t('stats.dailyGoal', 'Daily Goal')} value={weeklyData.calorieLimit} subtitle={t('stats.kcalTargetPerDay', 'kcal target / day')} trend={0} Icon={CheckSquare} gradientClass="bg-gradient-to-br from-sky-400 to-blue-600" delay="anim-delay-3" />
+          <StatCard title={t('stats.daysTracked', 'Days Tracked')} value={weeklyData.values.filter(v => v > 0).length} subtitle={t('stats.outOfLast7Days', 'Out of last 7 days')} trend={18} Icon={Trophy} gradientClass="bg-gradient-to-br from-amber-400 to-orange-500" delay="anim-delay-4" />
         </div>
 
         <RecommendationsSection workouts={workouts} t={t} />
 
         {/* Activity & Workouts Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-          <StatCard title="Total Workouts"   value={workouts.length}                                       subtitle="Automatically tracked"      trend={0}              Icon={Trophy}        gradientClass="bg-gradient-to-br from-indigo-400 to-purple-600"  delay="anim-delay-2" />
-          <StatCard title="Workout Calories" value={workouts.reduce((a, b) => a + b.calories_burned, 0).toLocaleString()} subtitle="Burned in total"       trend={0}              Icon={Flame}         gradientClass="bg-gradient-to-br from-red-400 to-orange-500"     delay="anim-delay-3" />
-          <StatCard title="Today's Steps"    value={activityData.steps.toLocaleString()}                   subtitle="Step count today"           trend={0}              Icon={ArrowUp}       gradientClass="bg-gradient-to-br from-emerald-400 to-teal-500"   delay="anim-delay-4" />
-          <StatCard title="Today's Distance" value={`${activityData.distance} km`}                         subtitle={`Run: ${activityData.running_distance} km`} trend={0}      Icon={ArrowDown}     gradientClass="bg-gradient-to-br from-cyan-400 to-blue-500"      delay="anim-delay-5" />
+          <StatCard title={t('stats.totalWorkouts', 'Total Workouts')} value={workouts.length} subtitle={t('stats.autoTracked', 'Automatically tracked')} trend={0} Icon={Trophy} gradientClass="bg-gradient-to-br from-indigo-400 to-purple-600" delay="anim-delay-2" />
+          <StatCard title={t('stats.workoutCalories', 'Workout Calories')} value={workouts.reduce((a, b) => a + b.calories_burned, 0).toLocaleString()} subtitle={t('stats.burnedInTotal', 'Burned in total')} trend={0} Icon={Flame} gradientClass="bg-gradient-to-br from-red-400 to-orange-500" delay="anim-delay-3" />
+          <StatCard title={t('stats.todaysSteps', "Today's Steps")} value={activityData.steps.toLocaleString()} subtitle={t('stats.stepCountToday', 'Step count today')} trend={0} Icon={ArrowUp} gradientClass="bg-gradient-to-br from-emerald-400 to-teal-500" delay="anim-delay-4" />
+          <StatCard title={t('stats.todaysDistance', "Today's Distance")} value={`${activityData.distance} km`} subtitle={t('stats.runDistance', 'Run: {{distance}} km', { distance: activityData.running_distance })} trend={0} Icon={ArrowDown} gradientClass="bg-gradient-to-br from-cyan-400 to-blue-500" delay="anim-delay-5" />
         </div>
 
         {/* Activity Input */}
         <section aria-labelledby="activity-heading" className="glass-card p-6 anim-up anim-delay-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-4 border-b pb-4" style={{ borderColor: 'var(--border)' }}>
             <div>
-              <h2 id="activity-heading" className="text-lg font-bold tracking-tight" style={{ color: 'var(--t-1)' }}>Activity Tracker</h2>
-              <p className="text-[13px] mt-0.5" style={{ color: 'var(--t-3)' }}>Log your daily steps and distance manually.</p>
+              <h2 id="activity-heading" className="text-lg font-bold tracking-tight" style={{ color: 'var(--t-1)' }}>{t('stats.activityTracker', 'Activity Tracker')}</h2>
+              <p className="text-[13px] mt-0.5" style={{ color: 'var(--t-3)' }}>{t('stats.activityTrackerDesc', 'Log your daily steps and distance manually.')}</p>
             </div>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
             <div>
-              <label className="block text-[12px] font-bold uppercase tracking-wider mb-1.5" style={{ color: 'var(--t-2)' }}>Steps</label>
+              <label className="block text-[12px] font-bold uppercase tracking-wider mb-1.5" style={{ color: 'var(--t-2)' }}>{t('stats.stepsLabel', 'Steps')}</label>
               <input type="number" value={formSteps} onChange={(e) => setFormSteps(e.target.value)} placeholder="0" className="w-full px-3 py-2 rounded-lg text-sm focus:outline-none focus:border-indigo-500" style={{ background: 'var(--bg-raised)', border: '1px solid var(--border)', color: 'var(--t-1)' }} />
             </div>
             <div>
-              <label className="block text-[12px] font-bold uppercase tracking-wider mb-1.5" style={{ color: 'var(--t-2)' }}>Distance (km)</label>
+              <label className="block text-[12px] font-bold uppercase tracking-wider mb-1.5" style={{ color: 'var(--t-2)' }}>{t('stats.distanceKm', 'Distance (km)')}</label>
               <input type="number" step="0.1" value={formDist} onChange={(e) => setFormDist(e.target.value)} placeholder="0" className="w-full px-3 py-2 rounded-lg text-sm focus:outline-none focus:border-indigo-500" style={{ background: 'var(--bg-raised)', border: '1px solid var(--border)', color: 'var(--t-1)' }} />
             </div>
             <div>
-              <label className="block text-[12px] font-bold uppercase tracking-wider mb-1.5" style={{ color: 'var(--t-2)' }}>Running (km)</label>
+              <label className="block text-[12px] font-bold uppercase tracking-wider mb-1.5" style={{ color: 'var(--t-2)' }}>{t('stats.runningKm', 'Running (km)')}</label>
               <input type="number" step="0.1" value={formRun} onChange={(e) => setFormRun(e.target.value)} placeholder="0" className="w-full px-3 py-2 rounded-lg text-sm focus:outline-none focus:border-indigo-500" style={{ background: 'var(--bg-raised)', border: '1px solid var(--border)', color: 'var(--t-1)' }} />
             </div>
           </div>
           <button onClick={handleLogActivity} className="btn-primary px-5 py-2.5 rounded-xl text-sm font-bold flex items-center gap-2">
-            <Plus size={16} /> Save Activity
+            <Plus size={16} /> {t('stats.saveActivity', 'Save Activity')}
           </button>
         </section>
 
@@ -390,20 +390,20 @@ export default function StatisticsPage() {
         <section aria-labelledby="weight-heading" className="glass-card p-6 anim-up anim-delay-5">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-4 border-b pb-4" style={{ borderColor: 'var(--border)' }}>
             <div>
-              <h2 id="weight-heading" className="text-lg font-bold tracking-tight" style={{ color: 'var(--t-1)' }}>Weight Tracking</h2>
-              <p className="text-[13px] mt-0.5" style={{ color: 'var(--t-3)' }}>Log your weight and monitor progress.</p>
+              <h2 id="weight-heading" className="text-lg font-bold tracking-tight" style={{ color: 'var(--t-1)' }}>{t('stats.weightTracking', 'Weight Tracking')}</h2>
+              <p className="text-[13px] mt-0.5" style={{ color: 'var(--t-3)' }}>{t('stats.weightTrackingDesc', 'Log your weight and monitor progress.')}</p>
             </div>
             <div className="flex gap-2">
               <input
                 type="number"
-                placeholder="Weight (kg)"
+                placeholder={t('stats.weightKg', 'Weight (kg)')}
                 value={newWeight}
                 onChange={(e) => setNewWeight(e.target.value)}
                 className="w-32 px-3 py-2 rounded-lg text-sm transition-colors focus:outline-none focus:border-indigo-500"
                 style={{ background: 'var(--bg-raised)', border: '1px solid var(--border)', color: 'var(--t-1)' }}
               />
               <button onClick={handleAddWeight} className="btn-primary px-4 py-2 rounded-lg text-sm flex items-center gap-2">
-                <Plus size={16} /> Log
+                <Plus size={16} /> {t('stats.log', 'Log')}
               </button>
             </div>
           </div>
@@ -417,8 +417,8 @@ export default function StatisticsPage() {
           <section aria-labelledby="chart-heading" className="glass-card p-6 anim-up anim-delay-5">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-4 border-b pb-4" style={{ borderColor: 'var(--border)' }}>
               <div>
-                <h2 id="chart-heading" className="text-lg font-bold tracking-tight" style={{ color: 'var(--t-1)' }}>Weekly Calorie Trend</h2>
-                <p className="text-[13px] mt-0.5" style={{ color: 'var(--t-3)' }}>Calories consumed over the last 7 days.</p>
+                <h2 id="chart-heading" className="text-lg font-bold tracking-tight" style={{ color: 'var(--t-1)' }}>{t('stats.weeklyCalorieTrend', 'Weekly Calorie Trend')}</h2>
+                <p className="text-[13px] mt-0.5" style={{ color: 'var(--t-3)' }}>{t('stats.weeklyCalorieTrendDesc', 'Calories consumed over the last 7 days.')}</p>
               </div>
             </div>
             <div className="w-full h-[260px]">
@@ -429,9 +429,9 @@ export default function StatisticsPage() {
           {/* Bar Chart — vs Goal */}
           <section aria-labelledby="bar-heading" className="glass-card p-6 anim-up anim-delay-6">
             <div className="mb-6 border-b pb-4" style={{ borderColor: 'var(--border)' }}>
-              <h2 id="bar-heading" className="text-lg font-bold tracking-tight" style={{ color: 'var(--t-1)' }}>Daily vs. Goal</h2>
+              <h2 id="bar-heading" className="text-lg font-bold tracking-tight" style={{ color: 'var(--t-1)' }}>{t('stats.dailyVsGoal', 'Daily vs. Goal')}</h2>
               <p className="text-[13px] mt-0.5" style={{ color: 'var(--t-3)' }}>
-                Green = within goal · <span style={{ color: '#f87171' }}>Red = over goal</span>
+                {t('stats.withinGoal', 'Green = within goal')} · <span style={{ color: '#f87171' }}>{t('stats.overGoal', 'Red = over goal')}</span>
               </p>
             </div>
             <div className="w-full h-[260px]">
@@ -443,12 +443,12 @@ export default function StatisticsPage() {
         {/* Recent Highlights */}
         <section aria-labelledby="recent-heading" className="glass-card p-6 anim-up anim-delay-6">
           <h2 id="recent-heading" className="text-lg font-bold tracking-tight mb-5 pb-4 border-b" style={{ color: 'var(--t-1)', borderColor: 'var(--border)' }}>
-            Highlights
+            {t('stats.highlights', 'Highlights')}
           </h2>
           <div className="space-y-1">
-            <RecentStatItem title="Current Streak"          date="Days in a row with logged meals"    value={`${streak} days`}                             isPositive={streak > 0} />
-            <RecentStatItem title="Weekly Total Calories"   date="Sum of last 7 days"                 value={`${totalWeekCal.toLocaleString()} kcal`}      isPositive={totalWeekCal <= weeklyData.calorieLimit * 7} />
-            <RecentStatItem title="Days Tracked This Week"  date="Days with at least one food entry"  value={`${weeklyData.values.filter(v => v > 0).length} / 7`} isPositive={true} />
+            <RecentStatItem title={t('stats.currentStreak', 'Current Streak')} date={t('stats.currentStreakDesc', 'Days in a row with logged meals')} value={t('stats.days', '{{count}} days', { count: streak })} isPositive={streak > 0} />
+            <RecentStatItem title={t('stats.weeklyTotalCalories', 'Weekly Total Calories')} date={t('stats.weeklyTotalCaloriesDesc', 'Sum of last 7 days')} value={t('stats.kcalUnit', '{{count}} kcal', { count: totalWeekCal.toLocaleString() })} isPositive={totalWeekCal <= weeklyData.calorieLimit * 7} />
+            <RecentStatItem title={t('stats.daysTrackedThisWeek', 'Days Tracked This Week')} date={t('stats.daysTrackedThisWeekDesc', 'Days with at least one food entry')} value={`${weeklyData.values.filter(v => v > 0).length} / 7`} isPositive={true} />
           </div>
         </section>
 
