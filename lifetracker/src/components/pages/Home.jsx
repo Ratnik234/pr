@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { CheckCircle2, Flame, Droplet, Smile, Plus, Utensils, FileText, Activity, Heart, Zap, X, AlertTriangle } from 'lucide-react'
+import { CheckCircle2, Flame, Droplet, Smile, Plus, Utensils, FileText, X, AlertTriangle } from 'lucide-react'
 import { getEntries, getDayTotals, getSettings, todayStr, addEntry, getActivityLog, getWorkouts, getCurrentUserInfo } from '../../utils/storage'
 import { useTranslation } from 'react-i18next'
 
@@ -41,22 +41,6 @@ function QuickActionButton({ label, Icon, colorClass, delay, onClick }) {
   )
 }
 
-function ActivityCard({ title, time, description, Icon, colorClass, delay }) {
-  return (
-    <div className={clsx("glass-card p-5 flex items-center gap-4 transition-all duration-300 hover:bg-white/[0.04] hover:-translate-y-0.5 anim-up", delay)}>
-      <div className={clsx("w-12 h-12 rounded-[14px] flex items-center justify-center flex-shrink-0", colorClass)} style={{ background: 'var(--bg-raised)' }}>
-        <Icon size={22} />
-      </div>
-      <div className="flex-1 min-w-0">
-        <h4 className="text-[15px] font-bold truncate" style={{ color: 'var(--t-1)' }}>{title}</h4>
-        <p className="text-[13px] truncate mt-0.5" style={{ color: 'var(--t-2)' }}>{description}</p>
-      </div>
-      <div className="text-[12px] font-mono font-medium flex-shrink-0" style={{ color: 'var(--t-3)' }}>
-        {time}
-      </div>
-    </div>
-  )
-}
 
 // ─── Simple Modals ────────────────────────────────────────────────────────────
 function AddTaskModal({ onClose, onAdd, t }) {
@@ -318,17 +302,6 @@ export default function Home() {
           </div>
         </section>
 
-        {/* Recent Activities */}
-        <section aria-labelledby="activity-heading">
-          <h2 id="activity-heading" className="text-[14px] font-bold uppercase tracking-[0.12em] mb-4" style={{ color: 'var(--t-3)' }}>
-            {t('home.recentActivities', 'Recent Activities')}
-          </h2>
-          <div className="space-y-3">
-            <ActivityCard title="Morning Run" description="5.2 km · 342 kcal burned" time="09:14 AM" Icon={Activity} colorClass="text-violet-400" delay="anim-delay-3" />
-            <ActivityCard title="Healthy Lunch" description="Chicken salad · 480 kcal" time="12:30 PM" Icon={Heart} colorClass="text-pink-400" delay="anim-delay-4" />
-            <ActivityCard title="Deep Work Session" description="Completed 2 tasks" time="02:15 PM" Icon={Zap} colorClass="text-amber-400" delay="anim-delay-5" />
-          </div>
-        </section>
 
       </div>
 
