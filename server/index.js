@@ -32,7 +32,7 @@ app.post('/api/auth/register', async (req, res) => {
         username,
         passwordHash,
         profile: {
-          create: {} // Auto-create profile
+          create: {} 
         }
       }
     });
