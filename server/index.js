@@ -96,7 +96,7 @@ app.post('/api/sync', async (req, res) => {
   if (!userId) return res.status(401).json({ error: 'Unauthorized' });
 
   try {
-    // Process operations sequentially
+
     for (const op of operations) {
       const { type, collection, data, id } = op;
       const modelName = COLLECTION_MODEL[collection];
